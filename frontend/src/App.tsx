@@ -1,15 +1,18 @@
-import React from 'react';
+import { Route, Routes } from 'react-router';
+import Welcome from './pages/Welcome';
+import ChatView from './pages/ChatView';
+import { Provider } from 'react-redux';
+import { store } from './app/store';
 
 function App() {
   return (
-    <div className="App">
-      <header className="App-header">
-        <p>
-          hellou
-        </p>
+    <Provider store={store}>
 
-      </header>
-    </div>
+      <Routes>
+        <Route path="/" element={<Welcome/>}/>
+        <Route path="/chat" element={<ChatView/>}/>
+      </Routes>
+    </Provider>
   );
 }
 
