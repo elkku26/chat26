@@ -1,3 +1,4 @@
+import { selectMessages } from '../features/chatSlice';
 import { selectStatus, selectUserName } from '../features/userSlice';
 import { useSelector } from 'react-redux';
 
@@ -5,6 +6,8 @@ function ChatView() {
 
   const userName = useSelector(selectUserName)
   const status = useSelector(selectStatus)
+
+  const messages = useSelector(selectMessages)
 
   return (
     <div className="ChatView">

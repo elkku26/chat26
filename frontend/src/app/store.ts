@@ -2,6 +2,7 @@
 
 import { configureStore } from '@reduxjs/toolkit'
 import userSlice from '../features/userSlice'
+import chatSlice from '../features/chatSlice'
 
 
 
@@ -9,7 +10,8 @@ import userSlice from '../features/userSlice'
 //export store
 export const store = configureStore({
   reducer: {
-    user: userSlice
+    user: userSlice,
+    chat: chatSlice
 }})
 
 //export types
