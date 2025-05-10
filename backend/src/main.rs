@@ -1,96 +1,137 @@
 mod shared_types;
 
-use std::collections::HashMap;
-use std::net::{TcpListener, TcpStream};
-use std::sync::{Arc, Mutex};
-use std::thread::spawn;
-use tungstenite::{accept, Utf8Bytes, WebSocket};
-use serde::{Deserialize};
-use serde_json::from_slice;
-use tungstenite::Error::Utf8;
-use tungstenite::protocol::Message as TungstenMessage;
-use crate::shared_types::{MessageKind, WSMessage};
+use axum::Router;
+use std::{
+    collections::HashMap,
+    env,
+    net::SocketAddr,
+    sync::{Arc, Mutex},
+};
 
-fn main () {
+use crate::shared_types::{ChatMessage, SendChatPayload, WSClientMessage, WSClientMessageKind};
+use futures_channel::mpsc::{UnboundedSender, unbounded};
+use futures_util::{StreamExt, future, stream::TryStreamExt};
+use tokio::join;
+use tokio::net::{TcpListener, TcpStream};
+use tokio_tungstenite::tungstenite::protocol::Message;
 
+type Tx = UnboundedSender<Message>;
+type PeerMap = Arc<Mutex<HashMap<SocketAddr, Tx>>>;
+
+async fn handle_websocket_connection(peer_map: PeerMap, raw_stream: TcpStream, addr: SocketAddr) {
+    println!("Incoming TCP connection from: {}", addr);
+
+    //accept async creates a WebSocketStream from the TcpStream, basically turning the raw tcp stream into a WS connection
+    let ws_stream = tokio_tungstenite::accept_async(raw_stream)
+        .await
+        .expect("Error during the websocket handshake occurred");
+    println!("WebSocket connection established: {}", addr);
+
+    //unbounded returns an unbounded sender tx and unbounded receiver rx
+    let (tx, rx) = unbounded();
+
+    //add the tcp address and the unbounded receiver to the peer map
+    peer_map.lock().unwrap().insert(addr, tx);
+
+    //split the ws stream into incoming and outgoing
+    let (outgoing, incoming) = ws_stream.split();
+
+    let handle_incoming = incoming.try_for_each(|msg| {
+        let serialized = msg.to_text().unwrap();
+
+        println!("Received a message from {}: {}", addr, serialized);
+
+        let deserialized: WSClientMessage = serde_json::from_str(serialized).unwrap();
+
+        match deserialized.kind {
+            WSClientMessageKind::SendChat {} => {
+                //validate the payload shape
+                let data: SendChatPayload = serde_json::from_value(deserialized.payload).unwrap();
+
+                println!("sendchat, payload is {}", serialized);
+                println!("chat message is {}", serde_json::to_string(&data).unwrap());
+            }
+            WSClientMessageKind::JoinRoom {} => {
+                let data = deserialized.payload.clone();
+                println!("joinroom, payload is {}", serialized);
+            }
+        }
+
+        let peers = peer_map.lock().unwrap();
+
+        // We want to broadcast the message to everyone except ourselves.
+        let broadcast_recipients = peers
+            .iter()
+            .filter(|(peer_addr, _)| peer_addr != &&addr)
+            .map(|(_, ws_sink)| ws_sink);
+
+        for recp in broadcast_recipients {
+            recp.unbounded_send(msg.clone()).unwrap();
+        }
+
+        future::ok(())
+    });
+
+    println!("{} disconnected", &addr);
+    peer_map.lock().unwrap().remove(&addr);
+}
+
+async fn rest_root() -> &'static str {
+    "hello there!"
+}
+
+async fn messages() -> String {
+    println!("get messages");
+    let messages: Vec<ChatMessage> = vec![ChatMessage::new(
+        String::from("Some-id"),
+        String::from("2025-05-08T19:15:15Z"),
+        String::from("hello"),
+        String::from("elias"),
+    )];
+    serde_json::to_string(&messages).unwrap()
+}
+
+#[tokio::main]
+async fn main() {
     //in memory database just for now
     //arc allows multiple threads to "own" the object at the same time
     //mutex locks the data from other threads while it's being accessed
     //vec! is a macro that lets us compactly init a vector with data
-    let messages : Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![
-        String::from("Hello1"),
-        String::from("Hello2"),
-    ]));
 
-    let members: Arc<Mutex<HashMap<String,Arc<Mutex<WebSocket<TcpStream>>>>>> = Arc::new(Mutex::new(HashMap::new()));
+    let state = PeerMap::new(Mutex::new(HashMap::new()));
 
-    let server = TcpListener::bind("127.0.0.1:9001").unwrap();
-    for stream in server.incoming() {
-        //give each thread copies of messages and room
-        let messages_copy = Arc::clone(&messages);
-        let members_copy = Arc::clone(&members);
+    let rest_addr = env::args()
+        .nth(1)
+        .unwrap_or_else(|| "127.0.0.1:9000".to_string());
+    let rest_listener = TcpListener::bind(&rest_addr)
+        .await
+        .expect("Failed to bind REST");
 
-        spawn (move || {
-            let websocket = accept(stream.unwrap()).unwrap();
+    let rest_server = async {
+        let rest_router: Router<()> = Router::new()
+            .route("/", axum::routing::get(rest_root))
+            .route("/messages", axum::routing::get(messages));
+        println!("Listening for REST on: {}", rest_addr);
+        axum::serve(rest_listener, rest_router).await.unwrap();
+    };
 
-            //wrap the websocket in an arc<mutex<>>> so we can safely store it
-            let ws_arc = Arc::new(Mutex::new(websocket));
+    //pay attention to the ports here when doing docker stuff
+    let ws_addr = env::args()
+        .nth(1)
+        .unwrap_or_else(|| "127.0.0.1:9001".to_string());
+    let try_ws_socket = TcpListener::bind(&ws_addr).await;
+    let ws_listener = try_ws_socket.expect("Failed to bind");
+    println!("Listening for WS on: {}", ws_addr);
 
-            loop {
-                let mut ws_lock = ws_arc.lock().unwrap();
-                let msg = ws_lock.read().unwrap();
-
-
-                if  msg.is_text() {
-                    let serialized = msg.into_text().unwrap();
-                    let deserialized : WSMessage = from_slice(serialized.as_bytes()).unwrap();
-                    let id = deserialized.id.clone();
-                    println!("{}", serde_json::to_string(&deserialized).unwrap());
-
-                    match deserialized.kind {
-                        MessageKind::EnterRoom { username, time } => {
-                            println!("branch enterroom \n user {} with time {}", username, time);
-
-
-
-                            //add the user to room_members
-                            //let mut members_lock = members_copy.lock().unwrap();
-
-                            //is clone() necessary here?
-                            //members_lock.insert(username.clone(), Arc::clone(&ws_arc));
-
-                            let response: WSMessage = WSMessage {id, kind: MessageKind::EnterRoom { username, time }};
-                            let serialized_response = serde_json::to_string(&response).unwrap();
-                            println!("Sending response {}", serialized_response);
-                            let response_bytes = Utf8Bytes::from(serialized_response);
-                            ws_lock.send(TungstenMessage::text(response_bytes)).unwrap();
-                            println!("Success");
-
-                        }
-                        MessageKind::SendChat { sender, content, time} => {
-                            println!("user {} with content {} at time {}", sender, content, time);
-                        }
-
-                        MessageKind::GetHistory { } => {
-
-                            //this is of type MutexGuard<Vec<String>> and it's basically a representation of the lock as a variable
-                            //so when this variable goes out of the scope, so does the lock
-                            //we could drop it explicitly I think, but it's not necessary here since it goes out of scope when we'd want to drop it anyway
-                            let history_guard = messages_copy.lock().unwrap();
-
-                            // &* dereferences the mutexguard, then references that, which somehow removes the mutexguard and gives back a regular reference for the current thread to use normally (I think?)
-                            let history_bytes = Utf8Bytes::from(serde_json::to_string(&*history_guard).unwrap());
-                            let history_message = TungstenMessage::Text(Utf8Bytes::from(history_bytes));
-
-
-                            let mut ws_lock = ws_arc.lock().unwrap();
-                            ws_lock.send(history_message).unwrap();
-                            println!("sent chat chistory to user!");
-
-                        }
-                    }
-                }
-            }
-        });
-    }
+    //as long as listener.accept() returns ok, spawn new async task, which is defined by fn handle_websocket_connection
+    let ws_server = async {
+        while let Ok((stream, addr)) = ws_listener.accept().await {
+            println!("New WebSocket connection: {}", addr);
+            tokio::spawn(handle_websocket_connection(state.clone(), stream, addr));
+        }
+    };
+    //join the endpoints
+    join!(rest_server, ws_server);
 }
+
+

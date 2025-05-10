@@ -1,21 +1,21 @@
 import { createSlice } from '@reduxjs/toolkit'
 import type { PayloadAction } from '@reduxjs/toolkit'
-import { Message } from '../types'
+import { ChatMessage } from '../types/shared-types'
 import { RootState } from '../app/store'
 
 export interface ChatState {
-  messages: Message[]
+  messages: ChatMessage[]
 }
 
 const initialState: ChatState = {
-  messages: []
+  messages:[]
 }
 
 export const chatSlice = createSlice({
   name: 'chat',
   initialState,
   reducers: {
-    setChat: (state, action: PayloadAction<Message[]>) => {
+    setChat: (state, action: PayloadAction<ChatMessage[]>) => {
       state.messages = action.payload
     }
   }

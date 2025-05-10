@@ -1,6 +1,6 @@
 import { createSlice } from '@reduxjs/toolkit'
 import type { PayloadAction } from '@reduxjs/toolkit'
-import { Status } from '../types'
+import { Status } from '../types/shared-types'
 import { RootState } from '../app/store'
 
 // Define the TS type for the counter slice's state

@@ -26,7 +26,7 @@ Lint: `some-cmd-here`
 #### Backend
  In `/backend`, run
  
-`cargo test export_bindings` 
+`typeshare --lang=typescript --output-file ../frontend/src/types/shared-types.ts .` 
 to generate type bindings (first time only), then run
 
  `cargo run`
@@ -46,9 +46,10 @@ Lint: `some-cmd-here`
 ### Backend
 
 - Rust
-    * `tungstenite` for WebSocket
+    * `axum` for web server
+        * `tungstenite-tokio` for WebSocket
     * `serde` for serialization/deserialization
-    * `ts-rs` for sharing type definitions from Rust to TypeScript
+    * `typeshare` for sharing type definitions from Rust to TypeScript
 
 
 ### Other technolologies
@@ -56,6 +57,3 @@ Lint: `some-cmd-here`
 
 ### Docker
 - (to be added)
-
-## Other
-- Timestamps follow ISO-8601

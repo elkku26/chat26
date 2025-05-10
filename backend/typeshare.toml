@@ -1,0 +1,4 @@
+[typescript.type_mappings]
+"Value" = "any" #this is needed to correctly map serde_json::Value to any in TS
+
+
