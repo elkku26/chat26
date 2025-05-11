@@ -16,6 +16,8 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio_tungstenite::tungstenite::protocol::Message;
 
 type Tx = UnboundedSender<Message>;
+
+/// PeerMap maps internet socket addresses to the sender half of the unbounded channel, allowing the server to send messages through the channel based on the socket addresses
 type PeerMap = Arc<Mutex<HashMap<SocketAddr, Tx>>>;
 
 async fn handle_websocket_connection(peer_map: PeerMap, raw_stream: TcpStream, addr: SocketAddr) {
@@ -28,6 +30,7 @@ async fn handle_websocket_connection(peer_map: PeerMap, raw_stream: TcpStream, a
     println!("WebSocket connection established: {}", addr);
 
     //unbounded returns an unbounded sender tx and unbounded receiver rx
+    //unbounded means that the channel is only bounded by the 
     let (tx, rx) = unbounded();
 
     //add the tcp address and the unbounded receiver to the peer map
@@ -37,6 +40,8 @@ async fn handle_websocket_connection(peer_map: PeerMap, raw_stream: TcpStream, a
     let (outgoing, incoming) = ws_stream.split();
 
     let handle_incoming = incoming.try_for_each(|msg| {
+        
+        //interesting implementation detail here: serialized is of type &str apparently because it's pointing to the data owned by the tungsten::Message
         let serialized = msg.to_text().unwrap();
 
         println!("Received a message from {}: {}", addr, serialized);
@@ -48,6 +53,7 @@ async fn handle_websocket_connection(peer_map: PeerMap, raw_stream: TcpStream, a
                 //validate the payload shape
                 let data: SendChatPayload = serde_json::from_value(deserialized.payload).unwrap();
 
+                
                 println!("sendchat, payload is {}", serialized);
                 println!("chat message is {}", serde_json::to_string(&data).unwrap());
             }
@@ -59,15 +65,6 @@ async fn handle_websocket_connection(peer_map: PeerMap, raw_stream: TcpStream, a
 
         let peers = peer_map.lock().unwrap();
 
-        // We want to broadcast the message to everyone except ourselves.
-        let broadcast_recipients = peers
-            .iter()
-            .filter(|(peer_addr, _)| peer_addr != &&addr)
-            .map(|(_, ws_sink)| ws_sink);
-
-        for recp in broadcast_recipients {
-            recp.unbounded_send(msg.clone()).unwrap();
-        }
 
         future::ok(())
     });
@@ -91,13 +88,13 @@ async fn messages() -> String {
     serde_json::to_string(&messages).unwrap()
 }
 
+
+//entry point for tokio
 #[tokio::main]
 async fn main() {
-    //in memory database just for now
+    
     //arc allows multiple threads to "own" the object at the same time
     //mutex locks the data from other threads while it's being accessed
-    //vec! is a macro that lets us compactly init a vector with data
-
     let state = PeerMap::new(Mutex::new(HashMap::new()));
 
     let rest_addr = env::args()

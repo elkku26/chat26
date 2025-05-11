@@ -14,6 +14,8 @@ function Welcome() {
   async function goToChat() {
     dispatch(setUserName(name));
     
+    console.log("WSS_ENDPOINT is", process.env.REACT_APP_WS_ENDPOINT)
+
     sendMsg(
       {
         id: uuidv4(), 

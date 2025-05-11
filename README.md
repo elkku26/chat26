@@ -19,7 +19,7 @@ The goal of this project is to build a simple full-stack chat app as a part of m
 
 `npm i` (first time only)
 
-`dotenvx run -f env.dev -- npm start`
+`npm start`
 
 Lint: `some-cmd-here`
 
@@ -53,7 +53,7 @@ Lint: `some-cmd-here`
 
 
 ### Other technolologies
- - `dotenvx` for environment files
+ - (to be added)
 
 ### Docker
 - (to be added)

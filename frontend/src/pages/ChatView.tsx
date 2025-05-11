@@ -14,10 +14,14 @@ function ChatView() {
   const dispatch = useDispatch()
 
   useEffect(() => {
+
+    //note to self: on StrictMode (which is on by default in the dev env) causes this component to render twice
+    //which also means the data is loaded twice, which looks a lot like a bug (especially looking at it from the server's point of view!)
+    //but I've confirmed this behaviour goes away when strictmode is turned off
     async function fetchData() {
       const response = await fetch(
-        "http://127.0.0.1:9000/messages" //TODO get this from env variable instead
-      )
+        `${process.env.REACT_APP_REST_ENDPOINT}:${process.env.REACT_APP_REST_PORT}/messages`
+        )
 
       const parsedResponse: ChatMessage[] = await response.json()
 
@@ -30,7 +34,7 @@ function ChatView() {
 
   return (
     <div className="ChatView">
-      <h1>{userName} ({status} )</h1>
+      <h1>{userName}</h1>
       <ol>
         {messages.map((message) => {
           return (
