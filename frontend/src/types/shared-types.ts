@@ -9,6 +9,10 @@ export interface ChatMessage {
 	sender_id: string;
 }
 
+export interface ForwardChatPayload {
+	chat_message: ChatMessage;
+}
+
 export interface JoinRoomPayload {
 	user_id: string;
 }
@@ -42,6 +46,7 @@ export interface WSClientMessage {
 
 export enum WSServerMessageKind {
 	Ping = "Ping",
+	ForwardChat = "ForwardChat",
 }
 
 export interface WSServerMessage {

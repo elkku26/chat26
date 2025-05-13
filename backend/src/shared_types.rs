@@ -1,6 +1,7 @@
-use typeshare::typeshare;
 use serde::{Deserialize, Serialize};
-//Messages
+use typeshare::typeshare;
+
+//Messages, distinguished by sender
 #[typeshare]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct WSClientMessage {
@@ -29,10 +30,10 @@ pub enum WSClientMessageKind {
 #[derive(Serialize, Deserialize, Debug)]
 pub enum WSServerMessageKind {
     Ping,
+    ForwardChat,
 }
 
 //message payloads
-
 #[typeshare]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct JoinRoomPayload {
@@ -45,8 +46,13 @@ pub struct SendChatPayload {
     pub chat_message: ChatMessage,
 }
 
-
-
+//note that SendChatPayload and ForwardChatPayload are identical, but they're semantically different
+//I'm doing it this way because it's possible that the contents of these payloads will eventually be different
+#[typeshare]
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ForwardChatPayload {
+    pub chat_message: ChatMessage,
+}
 
 //-------------------------------
 //data structures for business logic
@@ -56,7 +62,7 @@ pub struct User {
     pub(crate) id: String,
     pub(crate) created_at: String,
     pub(crate) username: String,
-    pub(crate) status: Status
+    pub(crate) status: Status,
 }
 
 #[typeshare]
@@ -67,14 +73,13 @@ pub enum Status {
 }
 
 #[typeshare]
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ChatMessage {
     pub(crate) id: String,
     pub(crate) time: String,
     pub(crate) content: String,
     pub(crate) sender_id: String,
 }
-
 
 //constructor for chatmessage
 impl ChatMessage {
@@ -83,9 +88,7 @@ impl ChatMessage {
             id,
             time,
             content,
-            sender_id
+            sender_id,
         }
     }
 }
-
-

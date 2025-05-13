@@ -15,15 +15,14 @@ export const chatSlice = createSlice({
   name: 'chat',
   initialState,
   reducers: {
-    setChat: (state, action: PayloadAction<ChatMessage[]>) => {
+    setMessages: (state, action: PayloadAction<ChatMessage[]>) => {
       state.messages = action.payload
     }
   }
 })
 
 //reducer actions
-export const { setChat } = chatSlice.actions
-
+export const { setMessages } = chatSlice.actions 
 //selectors
 export const selectMessages = (state: RootState) => state.chat.messages
 

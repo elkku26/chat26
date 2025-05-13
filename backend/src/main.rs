@@ -8,9 +8,12 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use crate::shared_types::{ChatMessage, SendChatPayload, WSClientMessage, WSClientMessageKind};
+use crate::shared_types::{
+    ChatMessage, ForwardChatPayload, SendChatPayload, WSClientMessage, WSClientMessageKind,
+    WSServerMessage, WSServerMessageKind,
+};
 use futures_channel::mpsc::{UnboundedSender, unbounded};
-use futures_util::{StreamExt, future, stream::TryStreamExt, pin_mut};
+use futures_util::{StreamExt, future, pin_mut, stream::TryStreamExt};
 use tokio::join;
 use tokio::net::{TcpListener, TcpStream};
 use tokio_tungstenite::tungstenite::protocol::Message;
@@ -32,7 +35,7 @@ async fn handle_websocket_connection(peer_map: PeerMap, raw_stream: TcpStream, a
     println!("WebSocket connection established: {}", addr);
 
     //unbounded returns an unbounded sender tx and unbounded receiver rx
-    //unbounded means that the channel is only bounded by the 
+    //unbounded means that the channel is only bounded by the
     let (tx, rx) = unbounded();
 
     //add the tcp address and the unbounded receiver to the peer map
@@ -42,7 +45,6 @@ async fn handle_websocket_connection(peer_map: PeerMap, raw_stream: TcpStream, a
     let (outgoing, incoming) = ws_stream.split();
 
     let handle_incoming = incoming.try_for_each(|msg| {
-        
         //interesting implementation detail here: serialized is of type &str apparently because it's pointing to the data owned by the tungsten::Message
         let serialized = msg.to_text().unwrap();
 
@@ -53,31 +55,47 @@ async fn handle_websocket_connection(peer_map: PeerMap, raw_stream: TcpStream, a
         match deserialized.kind {
             WSClientMessageKind::SendChat => {
                 //validate the payload shape
-                let data: SendChatPayload = serde_json::from_value(deserialized.payload).unwrap();
+                //todo error handling here? unwrap just panics on error I think
+                let payload: SendChatPayload =
+                    serde_json::from_value(deserialized.payload).unwrap();
 
                 //broadcast event to other members in the chat
                 let peers = peer_map.lock().unwrap();
-                let broadcast_recipients =
-                    peers.iter().filter(|(peer_addr, _)| peer_addr != &&addr).map(|(_, ws_sink)| ws_sink);
+                let broadcast_recipients = peers
+                    .iter()
+                    .filter(|(peer_addr, _)| peer_addr != &&addr)
+                    .map(|(_, ws_sink)| ws_sink);
+
+                //send the message to all the recipients
                 for recp in broadcast_recipients {
                     // .into() on a &str is the same as String::from("somestring")
-                    let peer_message = Message::Text("peer message test".into());
-                    recp.unbounded_send(peer_message.clone()).unwrap();
+                    let peer_payload: ForwardChatPayload = ForwardChatPayload {
+                        chat_message: payload.chat_message.clone(),
+                    }; //todo check if implementing clone for the payload type actually makes sense
+                    let peer_message: WSServerMessage = WSServerMessage {
+                        id: String::from(Uuid::new_v4()),
+                        kind: WSServerMessageKind::ForwardChat,
+                        payload: serde_json::json!(peer_payload),
+                    };
+                    let peer_tungsten_message =
+                        Message::from(serde_json::to_string(&peer_message).unwrap());
+                    recp.unbounded_send(peer_tungsten_message.clone()).unwrap();
                 }
+                
+                
                 println!("sendchat, payload is {}", serialized);
-                println!("chat message is {}", serde_json::to_string(&data).unwrap());
+                println!(
+                    "chat message is {}",
+                    serde_json::to_string(&payload).unwrap()
+                );
             }
             WSClientMessageKind::JoinRoom => {
-                let data = deserialized.payload.clone();
                 println!("joinroom, payload is {}", serialized);
             }
         }
 
-
-
         future::ok(())
     });
-
 
     //todo: figure out what this boilerplate actually does
     let receive_from_others = rx.map(Ok).forward(outgoing);
@@ -87,6 +105,7 @@ async fn handle_websocket_connection(peer_map: PeerMap, raw_stream: TcpStream, a
     println!("{} disconnected", &addr);
     peer_map.lock().unwrap().remove(&addr);
 }
+
 
 async fn rest_root() -> &'static str {
     "hello there!"
@@ -103,14 +122,20 @@ async fn messages() -> String {
     serde_json::to_string(&messages).unwrap()
 }
 
-
 //entry point for tokio
 #[tokio::main]
 async fn main() {
-    
     //arc allows multiple threads to "own" the object at the same time
     //mutex locks the data from other threads while it's being accessed
-    let state = PeerMap::new(Mutex::new(HashMap::new()));
+    let peer_map = PeerMap::new(Mutex::new(HashMap::new()));
+
+    let message_state: Arc<Mutex<Vec<ChatMessage>>> = Arc::new(Mutex::new(vec![ChatMessage::new(
+        String::from("Some-id"),
+        String::from("2025-05-08T19:15:15Z"),
+        String::from("hello"),
+        String::from(Uuid::new_v4()),
+    )]));
+
 
     let rest_addr = env::args()
         .nth(1)
@@ -139,11 +164,9 @@ async fn main() {
     let ws_server = async {
         while let Ok((stream, addr)) = ws_listener.accept().await {
             println!("New WebSocket connection: {}", addr);
-            tokio::spawn(handle_websocket_connection(state.clone(), stream, addr));
+            tokio::spawn(handle_websocket_connection(peer_map.clone(), stream, addr));
         }
     };
     //join the endpoints
     join!(rest_server, ws_server);
 }
-
-
