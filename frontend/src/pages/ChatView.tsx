@@ -1,13 +1,18 @@
 import { selectMessages, setChat } from '../features/chatSlice';
 import { selectStatus, selectUserName } from '../features/userSlice';
 import { useDispatch, useSelector } from 'react-redux';
-import { ChatMessage } from '../types/shared-types';
-import { useEffect } from 'react';
+import { ChatMessage, SendChatPayload, WSClientMessage, WSClientMessageKind } from '../types/shared-types';
+import { ChangeEvent, FormEvent, useEffect, useState } from 'react';
+import { v4 as uuidv4 } from 'uuid';
+import { sendMsg } from '../websocket';
+
 
 function ChatView() {
 
   const userName = useSelector(selectUserName)
   const status = useSelector(selectStatus)
+
+  const [currentMessage, setCurrentMessage] = useState<ChatMessage>({id: "", time:"", content:"", sender_id: "to be implemented!"});
 
   const messages: ChatMessage[] = useSelector(selectMessages)
 
@@ -32,6 +37,19 @@ function ChatView() {
     fetchData();
   }, [dispatch]) //dispatch will never actually change but useEffect doesn't know what
 
+  async function sendMessage(e: FormEvent<HTMLButtonElement>) {
+    console.log("yeehaw")
+    const message : WSClientMessage = {id: uuidv4(), payload: {chat_message: currentMessage} as SendChatPayload, kind: WSClientMessageKind.SendChat}
+    sendMsg(message);
+    dispatch(setChat([...messages, currentMessage])) //TODO: get the time from the server
+  }
+
+  function setMessageText(e: ChangeEvent<HTMLInputElement>) {
+    if (e.target.textContent !== null) {
+      setCurrentMessage({...currentMessage, content: e.target.value})
+    }
+  }
+
   return (
     <div className="ChatView">
       <h1>{userName}</h1>
@@ -45,7 +63,8 @@ function ChatView() {
         })}
       </ol>
       <div>
-        <input type="textbox" />
+        <input onChange={(e)=> setMessageText(e)}type="textbox" />
+        <button onClick={(e) => sendMessage(e)}>Send message</button>
       </div>
     </div>
   );

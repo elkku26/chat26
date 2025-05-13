@@ -1,21 +1,23 @@
 import { WSClientMessage, WSServerMessage } from "./types/shared-types";
 import {v4 as uuidv4} from 'uuid'
-const WSS_ENDPOINT = "ws://127.0.0.1:9001/ws"
 
-const socket = new WebSocket(WSS_ENDPOINT);
-
+const socket = new WebSocket(process.env.REACT_APP_WS_ENDPOINT+ ':'+ process.env.REACT_APP_WS_PORT|| "");
 
 
 
 function sendMsg(msg : WSClientMessage) {
-    console.log("sending", JSON.stringify(msg),"to", WSS_ENDPOINT)
+    console.log("sending", JSON.stringify(msg),"to", process.env.REACT_APP_WS_ENDPOINT+ ':'+ process.env.REACT_APP_WS_PORT)
     const id = uuidv4();
     msg.id = id
     socket.send(JSON.stringify(msg))
     }
 
 function readMsg (msg : WSServerMessage) {
+    console.log("received msg", msg)
+}
 
+socket.onmessage = function (e) {
+    console.log("received message", e);
 }
 
 export {readMsg, sendMsg};

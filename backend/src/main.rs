@@ -10,10 +10,12 @@ use std::{
 
 use crate::shared_types::{ChatMessage, SendChatPayload, WSClientMessage, WSClientMessageKind};
 use futures_channel::mpsc::{UnboundedSender, unbounded};
-use futures_util::{StreamExt, future, stream::TryStreamExt};
+use futures_util::{StreamExt, future, stream::TryStreamExt, pin_mut};
 use tokio::join;
 use tokio::net::{TcpListener, TcpStream};
 use tokio_tungstenite::tungstenite::protocol::Message;
+use tungstenite::Utf8Bytes;
+use uuid::Uuid;
 
 type Tx = UnboundedSender<Message>;
 
@@ -49,25 +51,38 @@ async fn handle_websocket_connection(peer_map: PeerMap, raw_stream: TcpStream, a
         let deserialized: WSClientMessage = serde_json::from_str(serialized).unwrap();
 
         match deserialized.kind {
-            WSClientMessageKind::SendChat {} => {
+            WSClientMessageKind::SendChat => {
                 //validate the payload shape
                 let data: SendChatPayload = serde_json::from_value(deserialized.payload).unwrap();
 
-                
+                //broadcast event to other members in the chat
+                let peers = peer_map.lock().unwrap();
+                let broadcast_recipients =
+                    peers.iter().filter(|(peer_addr, _)| peer_addr != &&addr).map(|(_, ws_sink)| ws_sink);
+                for recp in broadcast_recipients {
+                    // .into() on a &str is the same as String::from("somestring")
+                    let peer_message = Message::Text("peer message test".into());
+                    recp.unbounded_send(peer_message.clone()).unwrap();
+                }
                 println!("sendchat, payload is {}", serialized);
                 println!("chat message is {}", serde_json::to_string(&data).unwrap());
             }
-            WSClientMessageKind::JoinRoom {} => {
+            WSClientMessageKind::JoinRoom => {
                 let data = deserialized.payload.clone();
                 println!("joinroom, payload is {}", serialized);
             }
         }
 
-        let peers = peer_map.lock().unwrap();
 
 
         future::ok(())
     });
+
+
+    //todo: figure out what this boilerplate actually does
+    let receive_from_others = rx.map(Ok).forward(outgoing);
+    pin_mut!(handle_incoming, receive_from_others);
+    future::select(handle_incoming, receive_from_others).await;
 
     println!("{} disconnected", &addr);
     peer_map.lock().unwrap().remove(&addr);
@@ -83,7 +98,7 @@ async fn messages() -> String {
         String::from("Some-id"),
         String::from("2025-05-08T19:15:15Z"),
         String::from("hello"),
-        String::from("elias"),
+        String::from(Uuid::new_v4()),
     )];
     serde_json::to_string(&messages).unwrap()
 }
