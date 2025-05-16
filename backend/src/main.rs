@@ -1,32 +1,37 @@
 mod shared_types;
+mod internal_types;
 
-use axum::Router;
+use axum::{Router};
 use std::{
     collections::HashMap,
     env,
     net::SocketAddr,
     sync::{Arc, Mutex},
 };
-
-use crate::shared_types::{
-    ChatMessage, ForwardChatPayload, SendChatPayload, WSClientMessage, WSClientMessageKind,
-    WSServerMessage, WSServerMessageKind,
-};
+use axum::extract::State;
+use axum::middleware::map_response_with_state;
+use crate::shared_types::{ChatMessage, ForwardChatPayload, SendChatPayload, User, WSClientMessage, WSClientMessageKind, WSServerMessage, WSServerMessageKind};
 use futures_channel::mpsc::{UnboundedSender, unbounded};
 use futures_util::{StreamExt, future, pin_mut, stream::TryStreamExt};
 use tokio::join;
 use tokio::net::{TcpListener, TcpStream};
-use tokio_tungstenite::tungstenite::protocol::Message;
-use tungstenite::Utf8Bytes;
+use tokio_tungstenite;
 use uuid::Uuid;
-
-type Tx = UnboundedSender<Message>;
-
+use crate::internal_types::AppState;
+use chrono::prelude::*;
+type Tx = UnboundedSender<tungstenite::protocol::Message>;
 /// PeerMap maps internet socket addresses to the sender half of the unbounded channel, allowing the server to send messages through the channel based on the socket addresses
 type PeerMap = Arc<Mutex<HashMap<SocketAddr, Tx>>>;
+type ProtectedAppState = Arc<Mutex<AppState>>;
 
-async fn handle_websocket_connection(peer_map: PeerMap, raw_stream: TcpStream, addr: SocketAddr) {
+fn insert_peer(peer_map_ref: &PeerMap, addr: SocketAddr, tx: Tx) {
+    let mut peer_map_lock = peer_map_ref.lock().unwrap();
+    peer_map_lock.insert(addr, tx);
+}
+
+async fn handle_websocket_connection(peer_map: PeerMap, raw_stream: TcpStream, addr: SocketAddr, app_state: ProtectedAppState) {
     println!("Incoming TCP connection from: {}", addr);
+
 
     //accept async creates a WebSocketStream from the TcpStream, basically turning the raw tcp stream into a WS connection
     let ws_stream = tokio_tungstenite::accept_async(raw_stream)
@@ -35,13 +40,15 @@ async fn handle_websocket_connection(peer_map: PeerMap, raw_stream: TcpStream, a
     println!("WebSocket connection established: {}", addr);
 
     //unbounded returns an unbounded sender tx and unbounded receiver rx
-    //unbounded means that the channel is only bounded by the
+    //unbounded means that the channel is only bounded by the available memory
     let (tx, rx) = unbounded();
 
-    //add the tcp address and the unbounded receiver to the peer map
-    peer_map.lock().unwrap().insert(addr, tx);
+
+    let hashmap_ref = &peer_map;
+    insert_peer(hashmap_ref, addr, tx);
 
     //split the ws stream into incoming and outgoing
+
     let (outgoing, incoming) = ws_stream.split();
 
     let handle_incoming = incoming.try_for_each(|msg| {
@@ -78,16 +85,24 @@ async fn handle_websocket_connection(peer_map: PeerMap, raw_stream: TcpStream, a
                         payload: serde_json::json!(peer_payload),
                     };
                     let peer_tungsten_message =
-                        Message::from(serde_json::to_string(&peer_message).unwrap());
-                    recp.unbounded_send(peer_tungsten_message.clone()).unwrap();
+                        tungstenite::protocol::Message::from(serde_json::to_string(&peer_message).unwrap());
+                    match recp.unbounded_send(peer_tungsten_message.clone()) {
+                        Ok(_) => {println!("Succesfully broadcasted")},
+                        Err(error) => { eprintln!("oh noes")}
+                    };
                 }
-                
-                
+
+
                 println!("sendchat, payload is {}", serialized);
                 println!(
                     "chat message is {}",
                     serde_json::to_string(&payload).unwrap()
                 );
+
+
+                let new_message = ChatMessage {id: payload.chat_message.id, sender_id: payload.chat_message.sender_id, content: payload.chat_message.content, time: Utc::now().to_string() };
+                let mut app_state_lock = app_state.lock().unwrap();
+                app_state_lock.messages.push(new_message);
             }
             WSClientMessageKind::JoinRoom => {
                 println!("joinroom, payload is {}", serialized);
@@ -97,29 +112,31 @@ async fn handle_websocket_connection(peer_map: PeerMap, raw_stream: TcpStream, a
         future::ok(())
     });
 
+    
     //todo: figure out what this boilerplate actually does
     let receive_from_others = rx.map(Ok).forward(outgoing);
     pin_mut!(handle_incoming, receive_from_others);
     future::select(handle_incoming, receive_from_others).await;
 
-    println!("{} disconnected", &addr);
-    peer_map.lock().unwrap().remove(&addr);
 }
 
-
-async fn rest_root() -> &'static str {
-    "hello there!"
-}
-
-async fn messages() -> String {
+async fn messages(State(state): State<ProtectedAppState>) -> String {
     println!("get messages");
-    let messages: Vec<ChatMessage> = vec![ChatMessage::new(
+    let state_lock = state.lock().unwrap();
+    let message_state = &state_lock.messages;
+    println!("{}", serde_json::to_string(message_state).unwrap());
+
+    /*let messages: Vec<ChatMessage> = vec![ChatMessage::new(
         String::from("Some-id"),
         String::from("2025-05-08T19:15:15Z"),
         String::from("hello"),
         String::from(Uuid::new_v4()),
-    )];
-    serde_json::to_string(&messages).unwrap()
+    )];*/
+
+    serde_json::to_string(message_state).unwrap()
+}
+async fn rest_root() -> &'static str {
+    "hello there!"
 }
 
 //entry point for tokio
@@ -136,6 +153,12 @@ async fn main() {
         String::from(Uuid::new_v4()),
     )]));
 
+    
+
+    let state = Arc::new(Mutex::new(AppState {messages: vec!{}, room_members: vec!{} }));
+
+    //Arc::clone allows us to have access the state in both the REST and websocket functinos
+    let rest_state = Arc::clone(&state);
 
     let rest_addr = env::args()
         .nth(1)
@@ -144,27 +167,43 @@ async fn main() {
         .await
         .expect("Failed to bind REST");
 
+    let app = Router::new()
+        .route("/", axum::routing::get(rest_root))
+        .route("/messages", axum::routing::get(messages))
+        .with_state(rest_state); // Apply state to the entire router
+
     let rest_server = async {
-        let rest_router: Router<()> = Router::new()
-            .route("/", axum::routing::get(rest_root))
-            .route("/messages", axum::routing::get(messages));
         println!("Listening for REST on: {}", rest_addr);
-        axum::serve(rest_listener, rest_router).await.unwrap();
+        axum::serve(rest_listener, app).await.unwrap();
     };
+
 
     //pay attention to the ports here when doing docker stuff
     let ws_addr = env::args()
         .nth(1)
         .unwrap_or_else(|| "127.0.0.1:9001".to_string());
-    let try_ws_socket = TcpListener::bind(&ws_addr).await;
-    let ws_listener = try_ws_socket.expect("Failed to bind");
+    let ws_listener = TcpListener::bind(&ws_addr)
+        .await
+        .expect("Failed to bind");
     println!("Listening for WS on: {}", ws_addr);
 
     //as long as listener.accept() returns ok, spawn new async task, which is defined by fn handle_websocket_connection
     let ws_server = async {
         while let Ok((stream, addr)) = ws_listener.accept().await {
             println!("New WebSocket connection: {}", addr);
-            tokio::spawn(handle_websocket_connection(peer_map.clone(), stream, addr));
+
+            //it feels odd to clone the state for each connection like this
+            //but this is the way the official tokio.rs tutorial does this
+            //and remember that we're not cloning the state itself but actually just the arc pointer
+            let state_handle = state.clone();
+            let peer_map_handle = peer_map.clone();
+
+            //here move captures the variables inside the block and moves them to the thread spawned with tokio::spawn
+            tokio::spawn(async move {
+                handle_websocket_connection(peer_map_handle, stream, addr, state_handle).await;
+            });
+
+
         }
     };
     //join the endpoints

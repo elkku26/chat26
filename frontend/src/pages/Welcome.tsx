@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { setUserName } from '../features/userSlice';
-import { useDispatch } from 'react-redux';
+import { selectUserId, setUserName } from '../features/userSlice';
+import { useDispatch, useSelector } from 'react-redux';
 import { sendMsg } from '../websocket'
 import { v4 as uuidv4 } from 'uuid';
 import { JoinRoomPayload, WSClientMessageKind } from '../types/shared-types';
@@ -10,6 +10,8 @@ function Welcome() {
   const navigate = useNavigate();
   const [name, setName] = useState("")
   const dispatch = useDispatch();
+  const user_id = useSelector(selectUserId);
+
 
   async function goToChat() {
     dispatch(setUserName(name));
@@ -21,8 +23,8 @@ function Welcome() {
         id: uuidv4(), 
         kind: WSClientMessageKind.JoinRoom,
         payload: {
-          user_id: uuidv4()
-        } as JoinRoomPayload //we need to explicitly check the shape of the payload
+          user_id: user_id
+        } as JoinRoomPayload
       }
     )
     

@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use typeshare::typeshare;
 
+
+
 //Messages, distinguished by sender
 #[typeshare]
 #[derive(Serialize, Deserialize, Debug)]
@@ -57,7 +59,7 @@ pub struct ForwardChatPayload {
 //-------------------------------
 //data structures for business logic
 #[typeshare]
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct User {
     pub(crate) id: String,
     pub(crate) created_at: String,
@@ -66,7 +68,7 @@ pub struct User {
 }
 
 #[typeshare]
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum Status {
     Online,
     Offline,

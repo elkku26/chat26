@@ -50,6 +50,7 @@ Lint: `some-cmd-here`
         * `tungstenite-tokio` for WebSocket
     * `serde` for serialization/deserialization
     * `typeshare` for sharing type definitions from Rust to TypeScript
+- MongoDB
 
 
 ### Other technolologies
