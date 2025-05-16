@@ -1,4 +1,3 @@
-use std::sync::{Arc, Mutex};
 /// For types that we don't want to expose to the client
 /// These are stored in a separate file for clarity
 

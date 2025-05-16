@@ -24,6 +24,7 @@ pub struct WSServerMessage {
 #[typeshare]
 #[derive(Serialize, Deserialize, Debug)]
 pub enum WSClientMessageKind {
+    CreateUser,
     JoinRoom,
     SendChat,
 }
@@ -55,6 +56,13 @@ pub struct SendChatPayload {
 pub struct ForwardChatPayload {
     pub chat_message: ChatMessage,
 }
+
+#[typeshare]
+#[derive(Serialize, Deserialize, Debug)]
+pub struct CreateUserPayload {
+    pub(crate) username: String,
+}
+
 
 //-------------------------------
 //data structures for business logic
