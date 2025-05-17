@@ -1,5 +1,5 @@
 import { selectMessages, setMessages } from '../features/chatSlice';
-import { selectStatus, selectUserName } from '../features/userSlice';
+import { selectStatus, selectUserId, selectUserName } from '../features/userSlice';
 import { useDispatch, useSelector } from 'react-redux';
 import { ChatMessage, SendChatPayload, WSClientMessage, WSClientMessageKind } from '../types/shared-types';
 import { ChangeEvent, FormEvent, useEffect, useState } from 'react';
@@ -11,8 +11,9 @@ function ChatView() {
 
   const userName = useSelector(selectUserName)
   const status = useSelector(selectStatus)
+  const id = useSelector(selectUserId)
 
-  const [currentMessage, setCurrentMessage] = useState<ChatMessage>({id: uuidv4(), time:"", content:"", sender_id: "to be implemented!"});
+  const [currentMessageContent, setCurrentMessageContent] = useState<string>("")
 
   const messages: ChatMessage[] = useSelector(selectMessages)
 
@@ -39,14 +40,15 @@ function ChatView() {
 
   async function sendMessage(e: FormEvent<HTMLButtonElement>) {
     console.log("yeehaw")
-    const message : WSClientMessage = {id: uuidv4(), payload: {chat_message: {...currentMessage, time:(new Date()).toISOString()}} as SendChatPayload, kind: WSClientMessageKind.SendChat}
+    const payload : SendChatPayload = {sender_id: id, content: currentMessageContent}
+    const message : WSClientMessage = {id: uuidv4(), payload: payload, kind: WSClientMessageKind.SendChat}
     sendMsg(message);
-    dispatch(setMessages([...messages, currentMessage])) //TODO: get the time from the server
+    dispatch(setMessages([...messages, {id:"",created_at:"",content:"",sender_id:""}])) //TODO: get the time from the server
   }
 
   function setMessageText(e: ChangeEvent<HTMLInputElement>) {
     if (e.target.textContent !== null) {
-      setCurrentMessage({...currentMessage, content: e.target.value})
+      setCurrentMessageContent(e.target.value)
     }
   }
 
@@ -57,7 +59,7 @@ function ChatView() {
         {messages.map((message) => {
           return (
             <li style={{ "listStyleType": "none" }} key={message.id}>
-              {message.sender_id} said: {message.content} @ {message.time}
+              {message.sender_id} said: {message.content} @ {message.created_at}
             </li>
           )
         })}

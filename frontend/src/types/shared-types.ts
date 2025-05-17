@@ -4,9 +4,17 @@
 
 export interface ChatMessage {
 	id: string;
-	time: string;
+	created_at: string;
 	content: string;
 	sender_id: string;
+}
+
+export interface CreateUserPayload {
+	username: string;
+}
+
+export interface CreateUserResponsePayload {
+	uuid: string;
 }
 
 export interface ForwardChatPayload {
@@ -18,6 +26,11 @@ export interface JoinRoomPayload {
 }
 
 export interface SendChatPayload {
+	sender_id: string;
+	content: string;
+}
+
+export interface SendChatResponsePayload {
 	chat_message: ChatMessage;
 }
 
@@ -31,6 +44,10 @@ export interface User {
 	created_at: string;
 	username: string;
 	status: Status;
+}
+
+export interface UserJoinedPayload {
+	user: User;
 }
 
 export enum WSClientMessageKind {
@@ -47,6 +64,8 @@ export interface WSClientMessage {
 export enum WSServerMessageKind {
 	Ping = "Ping",
 	ForwardChat = "ForwardChat",
+	UserJoined = "UserJoined",
+	SendChatResponse = "SendChatResponse",
 }
 
 export interface WSServerMessage {

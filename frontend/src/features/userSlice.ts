@@ -1,41 +1,45 @@
 import { createSlice } from '@reduxjs/toolkit'
 import type { PayloadAction } from '@reduxjs/toolkit'
-import { Status } from '../types/shared-types'
+import { Status, User } from '../types/shared-types'
 import { RootState } from '../app/store'
-import {v4 as uuidv4} from 'uuid'
 
 // Define the TS type for the counter slice's state
 export interface UserState {
-  name: string
-  status: Status
-  id: string
+  currentUser: User
 }
 
 const initialState: UserState = {
-  name: "Anonymous User",
-  status: Status.Offline,
-  id: uuidv4()
+  currentUser: {  
+    username: "Anonymous User",
+    status: Status.Offline,
+    id: "",
+    created_at: ""
+  }
+
 }
 
 export const userSlice = createSlice({
-  name: 'user',
+  name: 'currentUser',
   initialState,
   reducers: {
     setUserName: (state, action: PayloadAction<string>) => {
-      state.name = action.payload
+      state.currentUser.username = action.payload
     },
     setStatus: (state, action: PayloadAction<Status>) => {
-        state.status = action.payload
+        state.currentUser.status = action.payload
+    },
+    setUserUuid : (state, action: PayloadAction<string>) => {
+      state.currentUser.id = action.payload
     }
   }
 })
 
 //reducer actions
-export const { setUserName, setStatus } = userSlice.actions
+export const { setUserName, setStatus, setUserUuid } = userSlice.actions
 
 //selectors
-export const selectUserName = (state: RootState) => state.user.name
-export const selectStatus = (state: RootState) => state.user.status
-export const selectUserId = (state : RootState) => state.user.id
+export const selectUserName = (state: RootState) => state.user.currentUser.username
+export const selectStatus = (state: RootState) => state.user.currentUser.status
+export const selectUserId = (state : RootState) => state.user.currentUser.id
 
 export default userSlice.reducer

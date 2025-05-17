@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { selectUserId, setUserName } from '../features/userSlice';
+import { selectUserId, setUserName, setUserUuid } from '../features/userSlice';
 import { useDispatch, useSelector } from 'react-redux';
 import { sendMsg } from '../websocket'
 import { v4 as uuidv4 } from 'uuid';
-import { JoinRoomPayload, WSClientMessageKind } from '../types/shared-types';
+import { CreateUserPayload, JoinRoomPayload, WSClientMessageKind } from '../types/shared-types';
 function Welcome() {
 
   const navigate = useNavigate();
@@ -17,6 +17,23 @@ function Welcome() {
     dispatch(setUserName(name));
     
     console.log("WSS_ENDPOINT is", process.env.REACT_APP_WS_ENDPOINT)
+
+
+    const response = await fetch(
+      `${process.env.REACT_APP_REST_ENDPOINT}:${process.env.REACT_APP_REST_PORT}/users`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"  
+        },
+        body: JSON.stringify({
+          username: name
+        } as CreateUserPayload)
+      }
+      )
+
+      dispatch(setUserUuid(await response.text()))
+
 
     sendMsg(
       {

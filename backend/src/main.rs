@@ -10,7 +10,7 @@ use std::{
 };
 use axum::extract::{State};
 use axum::http::{Method, StatusCode};
-use crate::shared_types::{ChatMessage, CreateUserPayload, ForwardChatPayload, SendChatPayload, User, WSClientMessage, WSClientMessageKind, WSServerMessage, WSServerMessageKind};
+use crate::shared_types::{ChatMessage, CreateUserPayload, CreateUserResponsePayload, ForwardChatPayload, JoinRoomPayload, SendChatPayload, SendChatResponsePayload, Status, User, UserJoinedPayload, WSClientMessage, WSClientMessageKind, WSServerMessage, WSServerMessageKind};
 use futures_channel::mpsc::{UnboundedSender, unbounded};
 use futures_util::{StreamExt, future, pin_mut, stream::TryStreamExt};
 use tokio::join;
@@ -40,17 +40,20 @@ fn insert_peer(peer_map_ref: &PeerMap, addr: SocketAddr, tx: Tx) {
 //REST implementations
 async fn get_messages(State(state): State<ProtectedAppState>) -> String {
     println!("get messages");
-    let state_lock = state.lock().unwrap();
+    let state_lock = state.lock().unwrap(); //this fails with poisonerror
     let messages = &state_lock.messages;
     println!("{}", serde_json::to_string(messages).unwrap());
 
     serde_json::to_string(messages).unwrap()
 }
 
-async fn post_user(axum::Json(payload): axum::Json<CreateUserPayload>) -> &'static str {
-    println!("post user: {:?}", serde_json::to_string(&payload));
-    "yay"
-
+async fn post_user(State(state): State<ProtectedAppState>, axum::Json(payload): axum::Json<CreateUserPayload>) -> String {
+    println!("post user");
+    let mut state_lock = state.lock().unwrap();
+    let response = CreateUserResponsePayload{ uuid: String::from(Uuid::new_v4())};
+    let user : User = User {username: payload.username, id: response.uuid.clone(), created_at: Utc::now().to_string(), status: Status::Online };
+    state_lock.room_members.push(user);
+    serde_json::to_string(&response).unwrap()
 }
 
 
@@ -75,7 +78,7 @@ async fn handle_websocket_connection(peer_map: PeerMap, raw_stream: TcpStream, a
 
 
     let hashmap_ref = &peer_map;
-    insert_peer(hashmap_ref, addr, tx);
+    insert_peer(hashmap_ref, addr, tx.clone());
 
     //split the ws stream into incoming and outgoing
 
@@ -88,26 +91,36 @@ async fn handle_websocket_connection(peer_map: PeerMap, raw_stream: TcpStream, a
         println!("Received a message from {}: {}", addr, serialized);
 
         let deserialized: WSClientMessage = serde_json::from_str(serialized).unwrap();
+        
+        //broadcast event to other members in the chat
+        let peers = peer_map.lock().unwrap();
+        let broadcast_recipients = peers
+            .iter()
+            .filter(|(peer_addr, _)| peer_addr != &&addr)
+            .map(|(_, ws_sink)| ws_sink);
 
+        
         match deserialized.kind {
             WSClientMessageKind::SendChat => {
                 //validate the payload shape
                 //todo error handling here? unwrap just panics on error I think
                 let payload: SendChatPayload =
                     serde_json::from_value(deserialized.payload).unwrap();
+                
+                
+                let new_chat = ChatMessage {
+                    id: String::from(Uuid::new_v4()),
+                    created_at: Utc::now().to_string(),
+                    content: payload.content,
+                    sender_id: payload.sender_id
+                };
 
-                //broadcast event to other members in the chat
-                let peers = peer_map.lock().unwrap();
-                let broadcast_recipients = peers
-                    .iter()
-                    .filter(|(peer_addr, _)| peer_addr != &&addr)
-                    .map(|(_, ws_sink)| ws_sink);
-
-                //send the message to all the recipients
+                
+                //send the ForwardChat msg to all the recipients
                 for recp in broadcast_recipients {
                     // .into() on a &str is the same as String::from("somestring")
                     let peer_payload: ForwardChatPayload = ForwardChatPayload {
-                        chat_message: payload.chat_message.clone(),
+                        chat_message: new_chat.clone()
                     }; //todo check if implementing clone for the payload type actually makes sense
                     let peer_message: WSServerMessage = WSServerMessage {
                         id: String::from(Uuid::new_v4()),
@@ -121,26 +134,61 @@ async fn handle_websocket_connection(peer_map: PeerMap, raw_stream: TcpStream, a
                         Err(error) => { eprintln!("oh noes")}
                     };
                 }
-
-
+                
+                //send the sendchatresponse to the client
+                let payload = serde_json::json!(SendChatResponsePayload {chat_message: new_chat});
+                let message = WSServerMessage {
+                    kind: WSServerMessageKind::SendChatResponse,
+                    id: deserialized.id,
+                    payload
+                };
+                
+                let serialized_response = tungstenite::protocol::Message::from(serde_json::to_string(&message).unwrap());
+                
+                match tx.unbounded_send(serialized_response) {
+                    Ok(_) => {println!("succesfully responded")},
+                    Err(error) => {eprintln!("error")}
+                }
+                
+                
+                
                 println!("sendchat, payload is {}", serialized);
-                println!(
-                    "chat message is {}",
-                    serde_json::to_string(&payload).unwrap()
-                );
 
 
-                let new_message = ChatMessage {id: payload.chat_message.id, sender_id: payload.chat_message.sender_id, content: payload.chat_message.content, time: Utc::now().to_string() };
-                let mut app_state_lock = app_state.lock().unwrap();
-                app_state_lock.messages.push(new_message);
+
+
             }
             WSClientMessageKind::JoinRoom => {
                 println!("joinroom, payload is {}", serialized);
+
+                let payload: JoinRoomPayload =
+                    serde_json::from_value(deserialized.payload).unwrap();
+
+                for recp in broadcast_recipients {
+                // .into() on a &str is the same as String::from("somestring")
+                
+                    let state_lock = app_state.lock().unwrap();
+                    let user = state_lock.room_members.iter().find(|&u| u.id == payload.user_id).unwrap();
+                    let peer_payload: UserJoinedPayload = UserJoinedPayload {user: user.clone()};
+                    
+                    let peer_message: WSServerMessage = WSServerMessage {
+                    id: String::from(Uuid::new_v4()),
+                    kind: WSServerMessageKind::UserJoined,
+                    payload: serde_json::json!(peer_payload),
+                };
+                let peer_tungsten_message =
+                    tungstenite::protocol::Message::from(serde_json::to_string(&peer_message).unwrap());
+                match recp.unbounded_send(peer_tungsten_message.clone()) {
+                    Ok(_) => {println!("Succesfully broadcasted")},
+                    Err(error) => { eprintln!("oh noes")}
+                };
             }
 
-            WSClientMessageKind::CreateUser => {
-                println!("I am not implemented yet :(");
+
+                
+                
             }
+
         }
 
         future::ok(())
@@ -154,9 +202,6 @@ async fn handle_websocket_connection(peer_map: PeerMap, raw_stream: TcpStream, a
 
 }
 
-async fn preflight_handler() -> impl axum::response::IntoResponse {
-    StatusCode::OK
-}
 
 
 //entry point for tokio
@@ -195,7 +240,6 @@ async fn main() {
     let app = Router::new()
         .route("/", axum::routing::get(rest_root))
         .route("/messages", axum::routing::get(get_messages))
-        .route("/messages", axum::routing::options(preflight_handler))
         .route("/users", axum::routing::post(post_user))
         .with_state(rest_state) // Apply state to the entire router
         .layer(cors);

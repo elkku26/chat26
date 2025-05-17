@@ -24,7 +24,6 @@ pub struct WSServerMessage {
 #[typeshare]
 #[derive(Serialize, Deserialize, Debug)]
 pub enum WSClientMessageKind {
-    CreateUser,
     JoinRoom,
     SendChat,
 }
@@ -34,6 +33,8 @@ pub enum WSClientMessageKind {
 pub enum WSServerMessageKind {
     Ping,
     ForwardChat,
+    UserJoined,
+    SendChatResponse
 }
 
 //message payloads
@@ -46,11 +47,11 @@ pub struct JoinRoomPayload {
 #[typeshare]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SendChatPayload {
-    pub chat_message: ChatMessage,
+    pub sender_id: String,
+    pub content: String
 }
 
-//note that SendChatPayload and ForwardChatPayload are identical, but they're semantically different
-//I'm doing it this way because it's possible that the contents of these payloads will eventually be different
+
 #[typeshare]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ForwardChatPayload {
@@ -62,6 +63,27 @@ pub struct ForwardChatPayload {
 pub struct CreateUserPayload {
     pub(crate) username: String,
 }
+
+#[typeshare]
+#[derive(Serialize, Deserialize, Debug)]
+pub struct UserJoinedPayload {
+    pub(crate) user: User,
+}
+
+
+
+#[typeshare]
+#[derive(Serialize, Deserialize, Debug)]
+pub struct CreateUserResponsePayload {
+    pub(crate) uuid: String,
+}
+
+#[typeshare]
+#[derive(Serialize, Deserialize, Debug)]
+pub struct SendChatResponsePayload {
+    pub(crate) chat_message: ChatMessage,
+}
+
 
 
 //-------------------------------
@@ -86,17 +108,17 @@ pub enum Status {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ChatMessage {
     pub(crate) id: String,
-    pub(crate) time: String,
+    pub(crate) created_at: String,
     pub(crate) content: String,
     pub(crate) sender_id: String,
 }
 
 //constructor for chatmessage
 impl ChatMessage {
-    pub fn new(id: String, time: String, content: String, sender_id: String) -> Self {
+    pub fn new(id: String, created_at: String, content: String, sender_id: String) -> Self {
         Self {
             id,
-            time,
+            created_at,
             content,
             sender_id,
         }

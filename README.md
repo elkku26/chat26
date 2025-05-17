@@ -48,7 +48,6 @@ Lint: `some-cmd-here`
 - Rust
     * `axum` for web server
         * `tungstenite-tokio` for WebSocket
-    * `serde` for serialization/deserialization
     * `typeshare` for sharing type definitions from Rust to TypeScript
 - MongoDB
 
