@@ -28,7 +28,7 @@ function sendMsg(msg: WSClientMessage): Promise<AcknowledgePayload> {
       }, 5000);
       const wsResponse = JSON.parse(e.data);
       if (wsResponse.payload.related_msg_id === msg.msg_id)
-        if (wsResponse.kind == WSServerMessageKind.Acknowledged) {
+        if (wsResponse.kind === WSServerMessageKind.Acknowledged) {
           console.log("resolved message", wsResponse);
           res(wsResponse.payload);
         } else {

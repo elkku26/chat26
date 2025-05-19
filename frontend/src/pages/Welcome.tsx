@@ -10,6 +10,7 @@ import {
   WSClientMessageKind,
 } from "../types/shared-types";
 import { selectUsers, setUsers } from "../features/chatSlice";
+import { Button, Input } from "@mantine/core";
 function Welcome() {
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
@@ -47,7 +48,7 @@ function Welcome() {
         <h1>Welcome to my cool chat app!</h1>
         <div>
           <h2>Please input your name</h2>
-          <input
+          <Input
             onKeyDown={(e) => {
               handleKeyDown(e);
             }}
@@ -55,16 +56,16 @@ function Welcome() {
               setUsername(e.target.value);
             }}
             type="text"
-          ></input>
+          ></Input>
         </div>
-        <button
+        <Button
           onClick={() => {
             goToChat();
           }}
           style={{ padding: "5px" }}
         >
           Go to chat room
-        </button>
+        </Button>
       </header>
     </div>
   );

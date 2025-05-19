@@ -14,6 +14,7 @@ import {
 import { ChangeEvent, useEffect, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { sendMsg } from "../websocket";
+import { Button, Input } from "@mantine/core";
 
 function ChatView() {
   const userName = useSelector(selectUserName);
@@ -43,7 +44,7 @@ function ChatView() {
   }, [dispatch]); //dispatch will never actually change but useEffect doesn't know what
 
   async function sendMessage() {
-    if (currentMessageContent != "") {
+    if (currentMessageContent !== "") {
       const payload: SendChatPayload = {
         sender_id: userId,
         content: currentMessageContent,
@@ -79,20 +80,23 @@ function ChatView() {
         {messages.map((message) => {
           return (
             <li style={{ listStyleType: "none" }} key={message.id}>
-              {users.filter((user) => user.id == message.sender_id)[0].username}{" "}
+              {
+                users.filter((user) => user.id === message.sender_id)[0]
+                  .username
+              }{" "}
               said: {message.content} @ {message.created_at}
             </li>
           );
         })}
       </ol>
       <div>
-        <input
+        <Input
           value={currentMessageContent}
           onKeyDown={(e) => handleKeyDown(e)}
           onChange={(e) => setMessageText(e)}
           type="textbox"
         />
-        <button onClick={() => sendMessage()}>Send message</button>
+        <Button onClick={() => sendMessage()}>Send message</Button>
       </div>
     </div>
   );

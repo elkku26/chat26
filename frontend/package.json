@@ -4,6 +4,8 @@
   "private": true,
   "dependencies": {
     "@dotenvx/dotenvx": "^1.43.0",
+    "@mantine/core": "^8.0.1",
+    "@mantine/hooks": "^8.0.1",
     "@reduxjs/toolkit": "^2.8.0",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",

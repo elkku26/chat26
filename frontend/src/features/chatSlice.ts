@@ -32,7 +32,7 @@ export const { setMessages, setUsers } = chatSlice.actions;
 export const selectMessages = (state: RootState) => state.chat.messages;
 export const selectUsers = (state: RootState) => state.chat.users;
 export const selectUserWithId = (state: RootState, user_id: string) => {
-  return state.chat.users.filter((user) => user.id == user_id)[0];
+  return state.chat.users.filter((user) => user.id === user_id)[0];
 };
 
 export default chatSlice.reducer;

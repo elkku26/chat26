@@ -26,8 +26,6 @@ In `/frontend`, run
 
 `npm start`
 
-Lint: `some-cmd-here`
-
 #### Backend
 
 In `/backend`, run
@@ -36,8 +34,6 @@ In `/backend`, run
 to generate type bindings (first time only), then run
 
 `cargo run`
-
-Lint: `some-cmd-here`
 
 ### Prod
 
@@ -50,6 +46,7 @@ Lint: `some-cmd-here`
 - React
 - TypeScript
 - Redux-Toolkit
+- Mantine (UI library)
 
 ### Backend
 
