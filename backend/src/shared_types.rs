@@ -1,13 +1,11 @@
 use serde::{Deserialize, Serialize};
 use typeshare::typeshare;
 
-
-
 //Messages, distinguished by sender
 #[typeshare]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct WSClientMessage {
-    pub(crate) id: String,
+    pub(crate) msg_id: String,
     pub(crate) kind: WSClientMessageKind,
     pub(crate) payload: serde_json::Value,
 }
@@ -15,7 +13,7 @@ pub struct WSClientMessage {
 #[typeshare]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct WSServerMessage {
-    pub(crate) id: String,
+    pub(crate) msg_id: String,
     pub(crate) kind: WSServerMessageKind,
     pub(crate) payload: serde_json::Value,
 }
@@ -34,23 +32,23 @@ pub enum WSServerMessageKind {
     Ping,
     ForwardChat,
     UserJoined,
-    SendChatResponse
+    Acknowledged,
+    NotAcknowledged,
 }
 
 //message payloads
 #[typeshare]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct JoinRoomPayload {
-    pub user_id: String,
+    pub username: String,
 }
 
 #[typeshare]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SendChatPayload {
     pub sender_id: String,
-    pub content: String
+    pub content: String,
 }
-
 
 #[typeshare]
 #[derive(Serialize, Deserialize, Debug)]
@@ -60,18 +58,19 @@ pub struct ForwardChatPayload {
 
 #[typeshare]
 #[derive(Serialize, Deserialize, Debug)]
-pub struct CreateUserPayload {
-    pub(crate) username: String,
-}
-
-#[typeshare]
-#[derive(Serialize, Deserialize, Debug)]
 pub struct UserJoinedPayload {
     pub(crate) user: User,
 }
 
+#[typeshare]
+#[derive(Serialize, Deserialize, Debug)]
+pub struct AcknowledgePayload {
+    pub(crate) related_msg_id: String,
+    pub(crate) acknowledged: bool,
+    pub(crate) data: serde_json::Value,
+}
 
-
+/*
 #[typeshare]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct CreateUserResponsePayload {
@@ -83,8 +82,7 @@ pub struct CreateUserResponsePayload {
 pub struct SendChatResponsePayload {
     pub(crate) chat_message: ChatMessage,
 }
-
-
+*/
 
 //-------------------------------
 //data structures for business logic
@@ -94,15 +92,17 @@ pub struct User {
     pub(crate) id: String,
     pub(crate) created_at: String,
     pub(crate) username: String,
-    pub(crate) status: Status,
+    // pub(crate) status: Status,
 }
 
+//let's not worry about status for now
+/*
 #[typeshare]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum Status {
     Online,
     Offline,
-}
+}*/
 
 #[typeshare]
 #[derive(Serialize, Deserialize, Debug, Clone)]
