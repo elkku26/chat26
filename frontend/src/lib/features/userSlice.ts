@@ -1,7 +1,7 @@
 import { createSlice } from "@reduxjs/toolkit";
 import type { PayloadAction } from "@reduxjs/toolkit";
-import { User } from "../types/shared-types";
-import { RootState } from "../app/store";
+import { User } from "../../types/shared-types";
+import { RootState } from "../store";
 
 // Define the TS type for the counter slice's state
 export interface UserState {
@@ -28,7 +28,9 @@ export const userSlice = createSlice({
     },
 
     setCurrentUser: (state, action: PayloadAction<User>) => {
-      state.currentUser = action.payload;
+      state.currentUser.username = action.payload.username;
+      state.currentUser.id = action.payload.id;
+      state.currentUser.created_at = action.payload.created_at;
     },
   },
 });

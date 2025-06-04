@@ -47,7 +47,7 @@ Lint: `some-cmd-here`
 
 ### Frontend
 
-- React
+- React with NextJS
 - TypeScript
 - Redux-Toolkit
 

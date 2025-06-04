@@ -3,8 +3,9 @@ mod shared_types;
 
 use crate::internal_types::AppState;
 use crate::shared_types::{
-    AcknowledgePayload, ChatMessage, ForwardChatPayload, JoinRoomPayload, SendChatPayload, User,
-    UserJoinedPayload, WSClientMessage, WSClientMessageKind, WSServerMessage, WSServerMessageKind,
+    AcknowledgeKind, AcknowledgePayload, ChatMessage, ForwardChatPayload, JoinRoomPayload,
+    SendChatPayload, User, UserJoinedPayload, WSClientMessage, WSClientMessageKind,
+    WSServerMessage, WSServerMessageKind,
 };
 use axum::Router;
 use axum::extract::State;
@@ -50,17 +51,28 @@ fn send_acknowledgment(payload: serde_json::Value, tx: Tx) {
             println!("successfully sent acknowledgment")
         }
         Err(error) => {
-            eprintln!("acknowledgement send failed with {}", error.to_string())
+            eprintln!(
+                "unbounded_send of acknowledgement failed with the following error: {}",
+                error.to_string()
+            )
         }
     }
 }
 
 //REST implementations
 async fn get_messages(State(state): State<ProtectedAppState>) -> String {
-    println!("get messages");
     let state_lock = state.lock().unwrap();
     let messages = &state_lock.messages;
-    println!("{}", serde_json::to_string(messages).unwrap());
+    println!("get messages: {}", serde_json::to_string(messages).unwrap());
+
+    serde_json::to_string(messages).unwrap()
+}
+
+//REST implementations
+async fn get_users(State(state): State<ProtectedAppState>) -> String {
+    let state_lock = state.lock().unwrap();
+    let messages = &state_lock.room_members;
+    println!("get users{}", serde_json::to_string(messages).unwrap());
 
     serde_json::to_string(messages).unwrap()
 }
@@ -140,7 +152,10 @@ async fn handle_websocket_connection(
                             println!("Successfully broadcasted ForwardChat event")
                         }
                         Err(error) => {
-                            println!("ForwardChat broadcast failed with {}", error.to_string())
+                            println!(
+                                "ForwardChat broadcast failed with: \"{}\"",
+                                error.to_string()
+                            )
                         }
                     };
                 }
@@ -149,9 +164,14 @@ async fn handle_websocket_connection(
                 let payload = serde_json::json!(AcknowledgePayload {
                     related_msg_id: deserialized_message.msg_id,
                     acknowledged: true,
-                    data: serde_json::json!(new_chat)
+                    data: serde_json::json!(new_chat),
+                    kind: AcknowledgeKind::SendChat
                 });
                 send_acknowledgment(payload, tx.clone()); //I wonder if cloning the UnboundedSender like this is idiomatic
+
+                let mut state_lock = app_state.lock().unwrap();
+
+                state_lock.messages.push(new_chat)
             }
             WSClientMessageKind::JoinRoom => {
                 println!("enter branch joinroom, payload is {}", serialized);
@@ -194,7 +214,8 @@ async fn handle_websocket_connection(
                 let payload = serde_json::json!(AcknowledgePayload {
                     related_msg_id: deserialized_message.msg_id,
                     acknowledged: true,
-                    data: serde_json::json!(new_user)
+                    data: serde_json::json!(new_user),
+                    kind: AcknowledgeKind::JoinRoom
                 });
                 send_acknowledgment(payload, tx.clone());
             }
@@ -238,6 +259,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/messages", axum::routing::get(get_messages))
+        .route("/users", axum::routing::get(get_users))
         .with_state(rest_state) // Apply state to the router
         .layer(cors);
 

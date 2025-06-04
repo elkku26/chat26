@@ -1,38 +1,45 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router";
-import { setCurrentUser, setUserName } from "../features/userSlice";
-import { useDispatch, useSelector } from "react-redux";
-import { sendMsg } from "../websocket";
+"use client";
+
+import React, { useEffect, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
+import { setCurrentUser, setUserName } from "@/lib/features/userSlice";
+import { useDispatch, useSelector } from "react-redux";
+import { useRouter } from "next/navigation";
 import {
   JoinRoomPayload,
   User,
+  WSClientMessage,
   WSClientMessageKind,
 } from "../types/shared-types";
-import { selectUsers, setUsers } from "../features/chatSlice";
+import { selectUsers, setUsers } from "@/lib/features/chatSlice";
+import { connect, disconnect, send } from "@/lib/features/socketSlice";
+import { Button, Input } from "@mantine/core";
 function Welcome() {
-  const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const dispatch = useDispatch();
 
+  useEffect(() => {
+    dispatch(connect()); //open Websocket connection
+    //todo: possible race condition here?
+  }, []);
   const users = useSelector(selectUsers);
+  const router = useRouter();
 
-  async function goToChat() {
+  function goToChat() {
     dispatch(setUserName(username));
 
-    let response = await sendMsg({
-      msg_id: uuidv4(),
+    console.log("now we will go to chat!");
+
+    //create and send new User to server
+
+    const payload: JoinRoomPayload = { username: username };
+    const message: WSClientMessage = {
+      payload: payload,
       kind: WSClientMessageKind.JoinRoom,
-      payload: {
-        username: username,
-      } as JoinRoomPayload,
-    });
-    let newUser = response.data as User;
-
-    dispatch(setUsers([...users, newUser]));
-    dispatch(setCurrentUser(newUser));
-
-    navigate("/chat");
+      msg_id: uuidv4(),
+    };
+    dispatch(send(message));
+    router.push("/chat");
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {

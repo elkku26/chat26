@@ -36,6 +36,15 @@ pub enum WSServerMessageKind {
     NotAcknowledged,
 }
 
+#[typeshare]
+#[derive(Serialize, Deserialize, Debug)]
+pub enum AcknowledgeKind {
+    UserJoined,
+    ForwardChat,
+    SendChat,
+    JoinRoom,
+}
+
 //message payloads
 #[typeshare]
 #[derive(Serialize, Deserialize, Debug)]
@@ -68,6 +77,7 @@ pub struct AcknowledgePayload {
     pub(crate) related_msg_id: String,
     pub(crate) acknowledged: bool,
     pub(crate) data: serde_json::Value,
+    pub(crate) kind: AcknowledgeKind,
 }
 
 /*

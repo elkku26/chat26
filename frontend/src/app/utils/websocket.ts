@@ -2,13 +2,13 @@ import {
   WSClientMessage,
   WSServerMessageKind,
   AcknowledgePayload,
-} from "./types/shared-types";
+} from "@/types/shared-types";
 import { v4 as uuidv4 } from "uuid";
-import { store } from "./app/store";
-import { setMessages, setUsers } from "./features/chatSlice";
-
+import { setMessages, setUsers } from "@/lib/features/chatSlice";
+import "@/envConfig";
+/*
 const socket = new WebSocket(
-  process.env.REACT_APP_WS_ENDPOINT + ":" + process.env.REACT_APP_WS_PORT || ""
+  process.env.WS_ENDPOINT! + ":" + process.env.WS_PORT! || ""
 );
 
 function sendMsg(msg: WSClientMessage): Promise<AcknowledgePayload> {
@@ -16,7 +16,7 @@ function sendMsg(msg: WSClientMessage): Promise<AcknowledgePayload> {
     "sendMsg: sending",
     JSON.stringify(msg),
     "to",
-    process.env.REACT_APP_WS_ENDPOINT + ":" + process.env.REACT_APP_WS_PORT
+    process.env.WS_ENDPOINT! + ":" + process.env.WS_PORT! || ""
   );
   const id = uuidv4();
   msg.msg_id = id;
@@ -64,3 +64,4 @@ socket.onmessage = function (e) {
 };
 
 export { sendMsg };
+*/

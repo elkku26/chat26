@@ -1,7 +1,7 @@
 import { createSlice } from "@reduxjs/toolkit";
 import type { PayloadAction } from "@reduxjs/toolkit";
-import { ChatMessage, User } from "../types/shared-types";
-import { RootState } from "../app/store";
+import { ChatMessage, User } from "../../types/shared-types";
+import { RootState } from "../store";
 
 export interface ChatState {
   messages: ChatMessage[];
