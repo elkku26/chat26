@@ -2,18 +2,16 @@
 
 import React, { useEffect, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
-import { setCurrentUser, setUserName } from "@/lib/features/userSlice";
+import { setUserName } from "@/lib/features/userSlice";
 import { useDispatch, useSelector } from "react-redux";
 import { useRouter } from "next/navigation";
 import {
   JoinRoomPayload,
-  User,
   WSClientMessage,
   WSClientMessageKind,
 } from "../types/shared-types";
-import { selectUsers, setUsers } from "@/lib/features/chatSlice";
-import { connect, disconnect, send } from "@/lib/features/socketSlice";
-import { Button, Input } from "@mantine/core";
+import { selectUsers } from "@/lib/features/chatSlice";
+import { connect, send } from "@/lib/features/socketSlice";
 function Welcome() {
   const [username, setUsername] = useState("");
   const dispatch = useDispatch();

@@ -19,6 +19,7 @@ import { v4 as uuidv4 } from "uuid";
 import { Button, Container, List, Paper, Text, TextInput } from "@mantine/core";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { send } from "@/lib/features/socketSlice";
+import { useFormatter, useNow } from "next-intl";
 
 type ChatRoomProps = {};
 
@@ -33,26 +34,29 @@ function ChatRoom(props: ChatRoomProps) {
     useState<string>("");
 
   const dispatch = useAppDispatch();
+  const format = useFormatter();
+  const now = useNow();
 
+  async function fetchData() {
+    const messageResponse = await fetch(
+      `${process.env.NEXT_PUBLIC_REST_ENDPOINT}:${process.env.NEXT_PUBLIC_REST_PORT}/messages`
+    );
+    const usersResponse = await fetch(
+      `${process.env.NEXT_PUBLIC_REST_ENDPOINT}:${process.env.NEXT_PUBLIC_REST_PORT}/users`
+    );
+    const parsedUsers: User[] = await usersResponse.json();
+    const parsedMessages: ChatMessage[] = await messageResponse.json();
+
+    console.log("fetched messages", parsedMessages);
+    console.log("fetched users", parsedUsers);
+    dispatch(setMessages(parsedMessages));
+    dispatch(setUsers(parsedUsers));
+  }
   useEffect(() => {
     //note to self: on StrictMode (which is on by default in the dev env) causes this component to render twice
     //which also means the data is loaded twice, which looks a lot like a bug (especially looking at it from the server's point of view!)
     //but I've confirmed this behaviour goes away when strictmode is turned off
-    async function fetchData() {
-      const messageResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_REST_ENDPOINT}:${process.env.NEXT_PUBLIC_REST_PORT}/messages`
-      );
-      const usersResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_REST_ENDPOINT}:${process.env.NEXT_PUBLIC_REST_PORT}/users`
-      );
-      const parsedUsers: User[] = await usersResponse.json();
-      const parsedMessages: ChatMessage[] = await messageResponse.json();
 
-      console.log("fetched messages", parsedMessages);
-      console.log("fetched users", parsedUsers);
-      dispatch(setMessages(parsedMessages));
-      dispatch(setUsers(parsedUsers));
-    }
     fetchData();
   }, [dispatch]); //dispatch will never actually change but useEffect doesn't know what
 
@@ -92,24 +96,22 @@ function ChatRoom(props: ChatRoomProps) {
   }
 
   return (
-    <Container fluid>
+    <Container>
       <h1>Chat</h1>
       <Container>
         <List>
           {messages.map((message) => {
             return (
               <List.Item style={{ listStyleType: "none" }} key={message.id}>
-                <Container>
-                  <Paper style={{ background: "teal.2" }} shadow="xs" p="xl">
-                    <Text style={{}}>
-                      {message.sender_id === currentUserId
-                        ? "You"
-                        : users.filter(
-                            (user) => user.id === message.sender_id
-                          )[0].username}{" "}
-                      said: {message.content} @ {message.created_at}
-                    </Text>
-                  </Paper>
+                <Container style={{ height: "100%" }}>
+                  <Text>
+                    {message.sender_id === currentUserId
+                      ? "You"
+                      : users.filter((user) => user.id === message.sender_id)[0]
+                          .username}{" "}
+                    said: {message.content} @{" "}
+                    {format.relativeTime(new Date(message.created_at), now)}
+                  </Text>
                 </Container>
               </List.Item>
             );

@@ -3,19 +3,17 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import {
   ColorSchemeScript,
+  createTheme,
   mantineHtmlProps,
   MantineProvider,
 } from "@mantine/core";
 import StoreProvider from "./StoreProvider";
+import { NextIntlClientProvider } from "next-intl";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+const theme = createTheme({
+  headings: {
+    fontFamily: "Trebuchet MS",
+  },
 });
 
 export const metadata: Metadata = {
@@ -33,10 +31,12 @@ export default function RootLayout({
       <head>
         <ColorSchemeScript />
       </head>
-      <body className={`${geistSans.variable} ${geistMono.variable}`}>
-        <StoreProvider>
-          <MantineProvider>{children}</MantineProvider>
-        </StoreProvider>
+      <body>
+        <NextIntlClientProvider>
+          <StoreProvider>
+            <MantineProvider theme={theme}>{children}</MantineProvider>
+          </StoreProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   );
