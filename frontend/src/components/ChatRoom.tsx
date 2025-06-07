@@ -29,7 +29,7 @@ import {
   Tooltip,
 } from "@mantine/core";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
-import { send } from "@/lib/features/socketSlice";
+import { disconnect, send } from "@/lib/features/socketSlice";
 import { useFormatter, useNow } from "next-intl";
 import { useRouter } from "next/navigation";
 
@@ -50,6 +50,10 @@ function ChatRoom(props: ChatRoomProps) {
   const now = useNow();
 
   async function fetchData() {
+    //note to self: on StrictMode (which is on by default in the dev env) causes this component to render twice
+    //which also means the data is loaded twice, which looks a lot like a bug (especially looking at it from the server's point of view!)
+    //but I've confirmed this behaviour goes away when strictmode is turned off
+
     const messageResponse = await fetch(
       `${process.env.NEXT_PUBLIC_REST_ENDPOINT}:${process.env.NEXT_PUBLIC_REST_PORT}/messages`
     );
@@ -65,11 +69,9 @@ function ChatRoom(props: ChatRoomProps) {
     dispatch(setUsers(parsedUsers));
   }
   useEffect(() => {
-    //note to self: on StrictMode (which is on by default in the dev env) causes this component to render twice
-    //which also means the data is loaded twice, which looks a lot like a bug (especially looking at it from the server's point of view!)
-    //but I've confirmed this behaviour goes away when strictmode is turned off
     if (currentUserId === "") {
-      router.push("/"); //fix reload bugs
+      router.push("/");
+      dispatch(disconnect());
     }
     fetchData();
   }, [dispatch]); //dispatch will never actually change but useEffect doesn't know what
@@ -104,41 +106,48 @@ function ChatRoom(props: ChatRoomProps) {
   }
 
   return (
-    <Stack align="stretch" justify="center" gap="md">
+    <Stack
+      align="stretch"
+      justify="center"
+      gap="md"
+      styles={{
+        root: {
+          margin: "1em",
+        },
+      }}
+    >
       <h1>Chat</h1>
-      <Suspense>
-        <List
-          bg="orange.1"
-          styles={{
-            root: {
-              margin: "0.5em",
-              borderRadius: "0.25em",
-              padding: "0.25em",
-              height: "100%",
-            },
-          }}
-        >
-          {messages.map((message) => {
-            return (
-              <List.Item style={{ listStyleType: "none" }} key={message.id}>
-                <Container style={{ height: "100%" }}>
-                  <Text>
-                    {message.sender_id === currentUserId
-                      ? "You"
-                      : users.filter((user) => user.id === message.sender_id)[0]
-                          .username}
-                    : "{message.content}"{" "}
-                    {format.relativeTime(
-                      new Date(message.created_at),
-                      new Date()
-                    )}
-                  </Text>
-                </Container>
-              </List.Item>
-            );
-          })}
-        </List>
-      </Suspense>
+      <List
+        bg="orange.1"
+        styles={{
+          root: {
+            margin: "0.5em",
+            borderRadius: "0.25em",
+            padding: "0.25em",
+            height: "100%",
+          },
+        }}
+      >
+        {messages.map((message) => {
+          return (
+            <List.Item style={{ listStyleType: "none" }} key={message.id}>
+              <Container style={{ height: "100%" }}>
+                <Text>
+                  {message.sender_id === currentUserId
+                    ? "You"
+                    : users.filter((user) => user.id === message.sender_id)[0]
+                        .username}
+                  : "{message.content}"{" "}
+                  {format.relativeTime(
+                    new Date(message.created_at),
+                    new Date()
+                  )}
+                </Text>
+              </Container>
+            </List.Item>
+          );
+        })}
+      </List>
       <Group>
         <TextInput
           value={currentMessageContent}

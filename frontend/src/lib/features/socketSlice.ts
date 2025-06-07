@@ -16,8 +16,7 @@ export const socketSlice = createSlice({
   initialState,
   reducers: {
     connect: (state) => {},
-    disconnect: (state, action: PayloadAction<string>) => {},
-
+    disconnect: (state) => {},
     send: (state, action: PayloadAction<WSClientMessage>) => {},
   },
 });

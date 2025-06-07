@@ -50,7 +50,18 @@ const socketMiddleware = (store) => {
             }
             case WSServerMessageKind.ForwardChat: {
               console.log("branch forwardchat");
-              const chatMessages = store.getState().chat.messages;
+              const chatMessages: ChatMessage[] =
+                store.getState().chat.messages;
+
+              //disregard incorrect forwards to avoid duplication
+              if (
+                chatMessages.filter((msg) => {
+                  msg.id === wsMessage.payload.chat_message.id;
+                }).length !== 0
+              ) {
+                console.log("duplicate skipped");
+                break;
+              }
               store.dispatch(
                 setMessages([...chatMessages, wsMessage.payload.chat_message])
               );
@@ -152,6 +163,7 @@ const socketMiddleware = (store) => {
         break;
 
       case WS_DISCONNECT:
+        console.log("disconnecting");
         if (socket) socket.close();
         socket = null;
         break;

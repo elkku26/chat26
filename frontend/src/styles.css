@@ -1,5 +1,6 @@
 body {
-  background-color: "#f1f4fe";
+  color: "#f1f4fe";
+  margin: "1em" !important;
 }
 
 html,
