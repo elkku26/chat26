@@ -14,19 +14,31 @@ import {
   WSClientMessage,
   WSClientMessageKind,
 } from "@/types/shared-types";
-import { ChangeEvent, useEffect, useState } from "react";
+import { ChangeEvent, Suspense, useEffect, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
-import { Button, Container, List, Paper, Text, TextInput } from "@mantine/core";
+import {
+  Button,
+  Container,
+  Flex,
+  Group,
+  List,
+  Paper,
+  Stack,
+  Text,
+  TextInput,
+  Tooltip,
+} from "@mantine/core";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { send } from "@/lib/features/socketSlice";
 import { useFormatter, useNow } from "next-intl";
+import { useRouter } from "next/navigation";
 
 type ChatRoomProps = {};
 
 function ChatRoom(props: ChatRoomProps) {
-  const userName = useAppSelector(selectUserName);
   const currentUserId = useAppSelector(selectUserId);
   const messages = useAppSelector(selectMessages);
+  const router = useRouter();
 
   const users = useAppSelector(selectUsers);
 
@@ -56,7 +68,9 @@ function ChatRoom(props: ChatRoomProps) {
     //note to self: on StrictMode (which is on by default in the dev env) causes this component to render twice
     //which also means the data is loaded twice, which looks a lot like a bug (especially looking at it from the server's point of view!)
     //but I've confirmed this behaviour goes away when strictmode is turned off
-
+    if (currentUserId === "") {
+      router.push("/"); //fix reload bugs
+    }
     fetchData();
   }, [dispatch]); //dispatch will never actually change but useEffect doesn't know what
 
@@ -73,12 +87,6 @@ function ChatRoom(props: ChatRoomProps) {
       };
 
       dispatch(send(message));
-
-      /*let response = await sendMsg(message); //This can't be executed in a client component
-      let newMessage = response.data as ChatMessage;
-      dispatch(setMessages([...messages, newMessage]));*/
-
-      //^^^instead of that, let's just dispatch an action that does the same thing^^^
     }
   }
 
@@ -96,10 +104,20 @@ function ChatRoom(props: ChatRoomProps) {
   }
 
   return (
-    <Container>
+    <Stack align="stretch" justify="center" gap="md">
       <h1>Chat</h1>
-      <Container>
-        <List>
+      <Suspense>
+        <List
+          bg="orange.1"
+          styles={{
+            root: {
+              margin: "0.5em",
+              borderRadius: "0.25em",
+              padding: "0.25em",
+              height: "100%",
+            },
+          }}
+        >
           {messages.map((message) => {
             return (
               <List.Item style={{ listStyleType: "none" }} key={message.id}>
@@ -108,25 +126,28 @@ function ChatRoom(props: ChatRoomProps) {
                     {message.sender_id === currentUserId
                       ? "You"
                       : users.filter((user) => user.id === message.sender_id)[0]
-                          .username}{" "}
-                    said: {message.content} @{" "}
-                    {format.relativeTime(new Date(message.created_at), now)}
+                          .username}
+                    : "{message.content}"{" "}
+                    {format.relativeTime(
+                      new Date(message.created_at),
+                      new Date()
+                    )}
                   </Text>
                 </Container>
               </List.Item>
             );
           })}
         </List>
-      </Container>
-      <Container>
+      </Suspense>
+      <Group>
         <TextInput
           value={currentMessageContent}
           onKeyDown={(e) => handleKeyDown(e)}
           onChange={(e) => setMessageText(e)}
         />
         <Button onClick={() => sendMessage()}>Send message</Button>
-      </Container>
-    </Container>
+      </Group>
+    </Stack>
   );
 }
 

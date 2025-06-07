@@ -12,6 +12,7 @@ import {
 } from "../types/shared-types";
 import { selectUsers } from "@/lib/features/chatSlice";
 import { connect, send } from "@/lib/features/socketSlice";
+import { Button, Container, Input, TextInput } from "@mantine/core";
 function Welcome() {
   const [username, setUsername] = useState("");
   const dispatch = useDispatch();
@@ -47,31 +48,37 @@ function Welcome() {
   }
 
   return (
-    <div className="Welcome">
-      <header className="Welcome-header">
-        <h1>Welcome to my cool chat app!</h1>
-        <div>
-          <h2>Please input your name</h2>
-          <input
-            onKeyDown={(e) => {
-              handleKeyDown(e);
-            }}
-            onChange={(e) => {
-              setUsername(e.target.value);
-            }}
-            type="text"
-          ></input>
-        </div>
-        <button
-          onClick={() => {
-            goToChat();
+    <Container
+      bg="orange.1"
+      styles={{
+        root: { borderRadius: "0.25em" },
+      }}
+    >
+      <h1>Welcome to my cool chat app!</h1>
+      <Container>
+        <h2>Please input your name</h2>
+        <TextInput
+          styles={{
+            root: { padding: "0.25em" },
           }}
-          style={{ padding: "5px" }}
-        >
-          Go to chat room
-        </button>
-      </header>
-    </div>
+          onKeyDown={(e) => {
+            handleKeyDown(e);
+          }}
+          onChange={(e) => {
+            setUsername(e.target.value);
+          }}
+          type="text"
+        ></TextInput>
+      </Container>
+      <Button
+        onClick={() => {
+          goToChat();
+        }}
+        styles={{ root: { padding: "0.25em", margin: "0.5em" } }}
+      >
+        Go to chat room
+      </Button>
+    </Container>
   );
 }
 

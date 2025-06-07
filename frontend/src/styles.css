@@ -1,0 +1,10 @@
+body {
+  background-color: "#f1f4fe";
+}
+
+html,
+body,
+.container,
+ul.timeline {
+  height: 100%;
+}
