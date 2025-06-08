@@ -23,6 +23,7 @@ import {
   Group,
   List,
   Paper,
+  ScrollArea,
   Stack,
   Text,
   TextInput,
@@ -117,37 +118,42 @@ function ChatRoom(props: ChatRoomProps) {
       }}
     >
       <h1>Chat</h1>
-      <List
-        bg="orange.1"
-        styles={{
-          root: {
-            margin: "0.5em",
-            borderRadius: "0.25em",
-            padding: "0.25em",
-            height: "100%",
-          },
-        }}
-      >
-        {messages.map((message) => {
-          return (
-            <List.Item style={{ listStyleType: "none" }} key={message.id}>
-              <Container style={{ height: "100%" }}>
-                <Text>
-                  {message.sender_id === currentUserId
-                    ? "You"
-                    : users.filter((user) => user.id === message.sender_id)[0]
-                        .username}
-                  : "{message.content}"{" "}
-                  {format.relativeTime(
-                    new Date(message.created_at),
-                    new Date()
-                  )}
-                </Text>
-              </Container>
-            </List.Item>
-          );
-        })}
-      </List>
+      <ScrollArea h={800}>
+        <List
+          bg="orange.1"
+          styles={{
+            root: {
+              margin: "0.5em",
+              borderRadius: "0.25em",
+              padding: "0.25em",
+              height: "100%",
+            },
+          }}
+        >
+          {messages.map((message) => {
+            return (
+              <List.Item style={{ listStyleType: "none" }} key={message.id}>
+                <Group style={{ height: "100%", padding: "1em" }}>
+                  <Container>
+                    <Text>
+                      {message.sender_id === currentUserId
+                        ? "You"
+                        : users.filter(
+                            (user) => user.id === message.sender_id
+                          )[0].username}
+                      : "{message.content}"{" "}
+                      {format.relativeTime(
+                        new Date(message.created_at),
+                        new Date()
+                      )}
+                    </Text>
+                  </Container>
+                </Group>
+              </List.Item>
+            );
+          })}
+        </List>
+      </ScrollArea>
       <Group>
         <TextInput
           value={currentMessageContent}

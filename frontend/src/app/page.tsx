@@ -11,13 +11,14 @@ import {
   WSClientMessageKind,
 } from "../types/shared-types";
 import { selectUsers } from "@/lib/features/chatSlice";
-import { connect, send } from "@/lib/features/socketSlice";
+import { connect, disconnect, send } from "@/lib/features/socketSlice";
 import { Button, Container, Input, TextInput } from "@mantine/core";
 function Welcome() {
   const [username, setUsername] = useState("");
   const dispatch = useDispatch();
 
   useEffect(() => {
+    dispatch(disconnect());
     dispatch(connect()); //open Websocket connection
     //todo: possible race condition here?
   }, []);
@@ -26,8 +27,6 @@ function Welcome() {
 
   function goToChat() {
     dispatch(setUserName(username));
-
-    console.log("now we will go to chat!");
 
     //create and send new User to server
 
@@ -51,7 +50,7 @@ function Welcome() {
     <Container
       bg="orange.1"
       styles={{
-        root: { borderRadius: "0.25em" },
+        root: { borderRadius: "0.25em", marginTop: "2em", padding: "1em" },
       }}
     >
       <h1>Welcome to my cool chat app!</h1>
