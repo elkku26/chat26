@@ -25,3 +25,4 @@ yarn-error.log*
 /backend/target/
 /backend/.idea/
 /backend/bindings
+/backend/images

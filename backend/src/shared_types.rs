@@ -1,3 +1,4 @@
+use std::fs::File;
 use serde::{Deserialize, Serialize};
 use typeshare::typeshare;
 
@@ -50,6 +51,7 @@ pub enum AcknowledgeKind {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct JoinRoomPayload {
     pub username: String,
+    pub pfp_url: String
 }
 
 #[typeshare]
@@ -80,19 +82,6 @@ pub struct AcknowledgePayload {
     pub(crate) kind: AcknowledgeKind,
 }
 
-/*
-#[typeshare]
-#[derive(Serialize, Deserialize, Debug)]
-pub struct CreateUserResponsePayload {
-    pub(crate) uuid: String,
-}
-
-#[typeshare]
-#[derive(Serialize, Deserialize, Debug)]
-pub struct SendChatResponsePayload {
-    pub(crate) chat_message: ChatMessage,
-}
-*/
 
 //-------------------------------
 //data structures for business logic
@@ -102,6 +91,7 @@ pub struct User {
     pub(crate) id: String,
     pub(crate) created_at: String,
     pub(crate) username: String,
+    pub(crate) pfp_url: String,
     // pub(crate) status: Status,
 }
 

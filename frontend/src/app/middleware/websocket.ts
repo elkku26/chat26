@@ -163,7 +163,9 @@ const socketMiddleware = (store) => {
         break;
 
       case WS_DISCONNECT:
-        console.log("disconnecting");
+        console.log(
+          "The WS_DISCONNECT action has been dispatched, closing socket"
+        );
         if (socket) socket.close();
         socket = null;
         break;

@@ -1,6 +1,8 @@
 "use client";
 import { selectUserId, selectUserName } from "@/lib/features/userSlice";
 
+import mysteryman from "@/mysteryman.png";
+
 import {
   setMessages,
   selectMessages,
@@ -28,11 +30,13 @@ import {
   Text,
   TextInput,
   Tooltip,
+  useMantineTheme,
 } from "@mantine/core";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { disconnect, send } from "@/lib/features/socketSlice";
 import { useFormatter, useNow } from "next-intl";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 type ChatRoomProps = {};
 
@@ -42,6 +46,8 @@ function ChatRoom(props: ChatRoomProps) {
   const router = useRouter();
 
   const users = useAppSelector(selectUsers);
+
+  const currentUser = users.filter((user) => user.id === currentUserId)[0];
 
   const [currentMessageContent, setCurrentMessageContent] =
     useState<string>("");
@@ -88,6 +94,7 @@ function ChatRoom(props: ChatRoomProps) {
         payload: payload,
         kind: WSClientMessageKind.SendChat,
       };
+      setCurrentMessageContent("");
 
       dispatch(send(message));
     }
@@ -105,6 +112,7 @@ function ChatRoom(props: ChatRoomProps) {
       setCurrentMessageContent("");
     }
   }
+  const theme = useMantineTheme();
 
   return (
     <Stack
@@ -113,20 +121,23 @@ function ChatRoom(props: ChatRoomProps) {
       gap="md"
       styles={{
         root: {
-          margin: "1em",
+          margin: "2em",
+          padding: "1em",
+          backgroundColor: theme.colors.gray[0],
         },
       }}
     >
       <h1>Chat</h1>
-      <ScrollArea h={800}>
+      <ScrollArea h={600}>
         <List
-          bg="orange.1"
+          bg="gray.1"
           styles={{
             root: {
               margin: "0.5em",
               borderRadius: "0.25em",
               padding: "0.25em",
               height: "100%",
+              backgroundColor: theme.colors.greenish[0],
             },
           }}
         >
@@ -134,14 +145,48 @@ function ChatRoom(props: ChatRoomProps) {
             return (
               <List.Item style={{ listStyleType: "none" }} key={message.id}>
                 <Group style={{ height: "100%", padding: "1em" }}>
-                  <Container>
+                  <Container
+                    style={{
+                      backgroundColor:
+                        message.sender_id === currentUserId
+                          ? theme.colors.orange[1]
+                          : theme.colors.greenish[2],
+                    }}
+                  >
                     <Text>
                       {message.sender_id === currentUserId
                         ? "You"
                         : users.filter(
                             (user) => user.id === message.sender_id
                           )[0].username}
-                      : "{message.content}"{" "}
+                      :
+                    </Text>
+                    <Image
+                      width={50}
+                      height={50}
+                      src={
+                        users.filter((user) => user.id === message.sender_id)[0]
+                          .pfp_url !== ""
+                          ? users.filter(
+                              (user) => user.id === message.sender_id
+                            )[0].pfp_url
+                          : mysteryman
+                      }
+                      alt={
+                        "Profile picture of " +
+                        users.filter((user) => user.id === message.sender_id)[0]
+                          .username
+                      }
+                    ></Image>
+                  </Container>
+                  <Container
+                    style={{ backgroundColor: theme.colors.greenish[1] }}
+                  >
+                    <Text>{message.content}</Text>
+                  </Container>
+                  <Container>
+                    <Text>
+                      {" "}
                       {format.relativeTime(
                         new Date(message.created_at),
                         new Date()

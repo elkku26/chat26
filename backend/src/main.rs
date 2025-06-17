@@ -7,8 +7,8 @@ use crate::shared_types::{
     SendChatPayload, User, UserJoinedPayload, WSClientMessage, WSClientMessageKind,
     WSServerMessage, WSServerMessageKind,
 };
-use axum::Router;
-use axum::extract::State;
+use axum::{Router};
+use axum::extract::{Multipart, State};
 use axum::http::Method;
 use chrono::prelude::*;
 use futures_channel::mpsc::{UnboundedSender, unbounded};
@@ -19,11 +19,16 @@ use std::{
     net::SocketAddr,
     sync::{Arc, Mutex},
 };
+use std::fs::File;
+use std::io::prelude::*;
 use tokio::join;
 use tokio::net::{TcpListener, TcpStream};
 use tokio_tungstenite;
 use tower_http::cors::CorsLayer;
 use uuid::Uuid;
+use tower_http::{
+    services::{ServeDir},
+};
 
 type Tx = UnboundedSender<tungstenite::protocol::Message>;
 /// PeerMap maps internet socket addresses to the sender half of the unbounded channel, allowing the server to send messages through the channel based on the socket addresses
@@ -63,18 +68,40 @@ fn send_acknowledgment(payload: serde_json::Value, tx: Tx) {
 async fn get_messages(State(state): State<ProtectedAppState>) -> String {
     let state_lock = state.lock().unwrap();
     let messages = &state_lock.messages;
-    println!("get messages: {}", serde_json::to_string(messages).unwrap());
+    println!("get messages:\n {}", serde_json::to_string(messages).unwrap());
 
     serde_json::to_string(messages).unwrap()
 }
 
-//REST implementations
 async fn get_users(State(state): State<ProtectedAppState>) -> String {
     let state_lock = state.lock().unwrap();
     let messages = &state_lock.room_members;
-    println!("get users{}", serde_json::to_string(messages).unwrap());
+    println!("get users:\n {}", serde_json::to_string(messages).unwrap());
 
     serde_json::to_string(messages).unwrap()
+}
+
+
+
+async fn handle_multipart_upload(mut multipart: Multipart) -> Result<String, String> {
+    println!("handle_multipart_upload");
+    while let Some(field) = multipart.next_field().await.unwrap() {
+        let file_name = field.file_name().unwrap_or("upload.png").to_string();
+        let content_type = field.content_type().unwrap_or("application/octet-stream").to_string();
+
+        let data = field.bytes().await.unwrap();
+        let unique_file_name = format!("{}-{}", Uuid::new_v4(), file_name);
+        println!("119");
+
+
+        let mut file = File::create(format!("images/{}",unique_file_name)).unwrap();
+        file.write_all(data.as_ref()).unwrap();
+        let url = String::from("http://localhost:8000/files/")+&unique_file_name;
+        println!("Succesfully uploaded {}", url);
+        return Ok(url)
+    }
+    println!("file upload failed");
+    Err("File upload failed".to_string())
 }
 
 async fn handle_websocket_connection(
@@ -185,6 +212,7 @@ async fn handle_websocket_connection(
                     created_at: Utc::now().to_string(),
                     id: String::from(Uuid::new_v4()),
                     username: payload.username,
+                    pfp_url: payload.pfp_url
                 };
                 state_lock.room_members.push(new_user.clone());
 
@@ -230,9 +258,12 @@ async fn handle_websocket_connection(
     future::select(handle_incoming, receive_from_others).await;
 }
 
+
 //entry point for tokio
 #[tokio::main]
 async fn main() {
+    
+
     //arc allows multiple threads to "own" the object at the same time
     //mutex locks the data from other threads while it's being accessed
     let peer_map = PeerMap::new(Mutex::new(HashMap::new()));
@@ -247,7 +278,7 @@ async fn main() {
 
     let rest_addr = env::args()
         .nth(1)
-        .unwrap_or_else(|| "127.0.0.1:9000".to_string());
+        .unwrap_or_else(|| "127.0.0.1:8000".to_string());
     let rest_listener = TcpListener::bind(&rest_addr)
         .await
         .expect("Failed to bind REST");
@@ -260,6 +291,8 @@ async fn main() {
     let app = Router::new()
         .route("/messages", axum::routing::get(get_messages))
         .route("/users", axum::routing::get(get_users))
+        .route("/images", axum::routing::post(handle_multipart_upload))
+        .nest_service("/files", ServeDir::new("images/"))
         .with_state(rest_state) // Apply state to the router
         .layer(cors);
 
@@ -271,7 +304,7 @@ async fn main() {
     //pay attention to the ports here when doing docker stuff
     let ws_addr = env::args()
         .nth(1)
-        .unwrap_or_else(|| "127.0.0.1:9001".to_string());
+        .unwrap_or_else(|| "127.0.0.1:8001".to_string());
     let ws_listener = TcpListener::bind(&ws_addr).await.expect("Failed to bind");
     println!("Listening for WS on: {}", ws_addr);
 

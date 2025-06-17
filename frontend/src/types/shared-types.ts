@@ -29,6 +29,7 @@ export interface ForwardChatPayload {
 
 export interface JoinRoomPayload {
 	username: string;
+	pfp_url: string;
 }
 
 export interface SendChatPayload {
@@ -40,6 +41,7 @@ export interface User {
 	id: string;
 	created_at: string;
 	username: string;
+	pfp_url: string;
 }
 
 export interface UserJoinedPayload {
