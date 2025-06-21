@@ -1,5 +1,7 @@
 # Chat26
 
+![Demo image](demo-image.png)
+
 ## About this project
 
 The goal of this project is to build a simple full-stack chat app as a part of my personal portfolio. For this reason, there are a lot of different technologies at play here, many of which are likely overkill considering the size of the project. This is not meant to be an economically developed, viable app, but rather a vertical slice showcasing many different development skills I've acquired.
