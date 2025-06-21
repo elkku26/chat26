@@ -1,5 +1,4 @@
 body {
-  color: "#f1f4fe";
   margin: "1em" !important;
 }
 
@@ -8,4 +7,12 @@ body,
 .container,
 ul.timeline {
   height: 100%;
+}
+
+.mantine-FileInput-input {
+  background-color: var(--mantine-color-greenish-2) !important;
+}
+
+.mantine-FileInput-placeholder {
+  color: #000000 !important;
 }

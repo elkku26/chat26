@@ -84,7 +84,7 @@ function Welcome() {
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "Enter") {
+    if (e.key === "Enter" && username.length > 0) {
       goToChat();
     }
   }
@@ -97,10 +97,8 @@ function Welcome() {
       }}
     >
       <h1 className={classes.h1}>Welcome to my cool chat app!</h1>
-      <Container>
-        <h2 className={classes.h2} style={{ marginBottom: "0.1em" }}>
-          Please enter your name
-        </h2>
+      <Group>
+        <h3>Please enter your name</h3>
         <TextInput
           label=""
           styles={{
@@ -122,24 +120,25 @@ function Welcome() {
             marginBottom: "1em",
           }}
         >
-          <h3 className={classes.h3}>And optionally add a profile picture</h3>
+          {/*           <h3 className={classes.h3}>And optionally add a profile picture</h3>
+           */}{" "}
           <Container style={{ border: theme.colors.greenish[2] }}>
             <FileInput
-              color="greenish.2"
               onChange={(picture) => setPfp(picture)}
               clearable
               accept="image/png,image/jpeg"
               variant="filled"
-              label="Profile picture"
-              placeholder="Add an image here!"
+              label="Add a profile picture (optional)"
+              placeholder="No image selected"
             ></FileInput>
           </Container>
         </Group>
-      </Container>
+      </Group>
       <Button
         onClick={() => {
-          goToChat();
+          username.length > 0 ? goToChat() : {};
         }}
+        disabled={username.length == 0}
         bg="greenish.2"
         styles={{ root: { padding: "0.5em", margin: "0.5em" } }}
       >
