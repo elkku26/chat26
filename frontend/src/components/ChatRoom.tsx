@@ -124,6 +124,7 @@ function ChatRoom(props: ChatRoomProps) {
           margin: "2em",
           padding: "1em",
           backgroundColor: theme.colors.greenish[1],
+          borderRadius: "0.25em",
         },
       }}
     >
@@ -153,39 +154,42 @@ function ChatRoom(props: ChatRoomProps) {
           }}
         >
           {messages.map((message) => {
+            console.log("filtering users");
+            console.log("users", users);
+
+            const user = users.filter(
+              (user) => user.id === message.sender_id
+            )[0];
             return (
               <List.Item
                 style={{
                   listStyleType: "none",
                   backgroundColor: "#FFFFFF",
                   margin: "0.5em",
+                  borderRadius: "0.25em",
                 }}
                 key={message.id}
               >
-                <Group style={{ height: "100%", padding: "1em" }}>
+                <Group
+                  style={{
+                    height: "100%",
+                    padding: "1em",
+                  }}
+                >
                   <Image
                     width={50}
                     height={50}
                     src={
-                      users.filter((user) => user.id === message.sender_id)[0]
-                        .pfp_url !== ""
+                      user.pfp_url !== ""
                         ? users.filter(
                             (user) => user.id === message.sender_id
                           )[0].pfp_url
                         : mysteryman
                     }
-                    alt={
-                      "Profile picture of " +
-                      users.filter((user) => user.id === message.sender_id)[0]
-                        .username
-                    }
+                    alt={"Profile picture of " + user.username}
                   ></Image>
                   <Text>
-                    {message.sender_id === userId
-                      ? "You"
-                      : users.filter((user) => user.id === message.sender_id)[0]
-                          .username}
-                    :
+                    {message.sender_id === userId ? "You" : user.username}:
                   </Text>
                   <Container style={{}}>
                     <Text>{message.content}</Text>

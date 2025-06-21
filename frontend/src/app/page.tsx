@@ -11,7 +11,12 @@ import {
   WSClientMessage,
   WSClientMessageKind,
 } from "../types/shared-types";
-import { connect, disconnect, send } from "@/lib/features/socketSlice";
+import {
+  connect,
+  disconnect,
+  selectIsConnected,
+  send,
+} from "@/lib/features/socketSlice";
 import {
   Button,
   Container,
@@ -21,10 +26,12 @@ import {
   TextInput,
   useMantineTheme,
 } from "@mantine/core";
+import { useAppSelector } from "@/lib/hooks";
 function Welcome() {
   const [username, setUsername] = useState("");
   const dispatch = useDispatch();
 
+  const isConnected = useAppSelector(selectIsConnected);
   useEffect(() => {
     dispatch(disconnect()); //do this to avoid multiple simultaneous connections
     dispatch(connect()); //open Websocket connection
@@ -66,9 +73,14 @@ function Welcome() {
       kind: WSClientMessageKind.JoinRoom,
       msg_id: uuidv4(),
     };
-    dispatch(send(message));
 
-    router.push("/chat");
+    if (isConnected) {
+      console.log("Dispatching JoinRoom");
+      dispatch(send(message));
+      router.push("/chat");
+    } else {
+      console.warn("Not connected");
+    }
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {

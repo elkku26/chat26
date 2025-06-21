@@ -5,21 +5,29 @@ import { RootState } from "../store";
 
 export interface SocketState {
   socket: WebSocket | null;
+  isConnected: boolean;
 }
 
 const initialState: SocketState = {
   socket: null,
+  isConnected: false,
 };
 
 export const socketSlice = createSlice({
-  name: "websocket",
+  name: "socket",
   initialState,
   reducers: {
     connect: (state) => {},
     disconnect: (state) => {},
+    setIsConnected: (state, action: PayloadAction<boolean>) => {
+      state.isConnected = action.payload;
+    },
     send: (state, action: PayloadAction<WSClientMessage>) => {},
   },
 });
 
+export const selectIsConnected = (state: RootState) => state.socket.isConnected;
+
 export default socketSlice.reducer;
-export const { connect, disconnect, send } = socketSlice.actions;
+export const { connect, disconnect, send, setIsConnected } =
+  socketSlice.actions;

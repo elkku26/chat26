@@ -1,4 +1,5 @@
 import { setMessages, setUsers } from "@/lib/features/chatSlice";
+import { setIsConnected } from "@/lib/features/socketSlice";
 import { setCurrentUser } from "@/lib/features/userSlice";
 import { RootState } from "@/lib/store";
 import {
@@ -10,9 +11,9 @@ import {
   WSServerMessageKind,
 } from "@/types/shared-types";
 
-export const WS_CONNECT = "websocket/connect";
-export const WS_SEND = "websocket/send";
-export const WS_DISCONNECT = "websocket/disconnect";
+export const WS_CONNECT = "socket/connect";
+export const WS_SEND = "socket/send";
+export const WS_DISCONNECT = "socket/disconnect";
 
 const socketMiddleware = (store) => {
   let socket: WebSocket | null = null;
@@ -34,8 +35,11 @@ const socketMiddleware = (store) => {
             process.env.NEXT_PUBLIC_WS_PORT
         );
 
+        console.log("inside connect reducer");
+
         socket.onopen = function (e) {
           console.log("socket is open");
+          store.dispatch(setIsConnected(true));
         };
 
         socket.onmessage = (e) => {
