@@ -1,5 +1,6 @@
 "use client";
 
+import classes from "./page.module.css";
 import React, { useEffect, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { setUserName } from "@/lib/features/userSlice";
@@ -38,8 +39,6 @@ function Welcome() {
   async function goToChat() {
     dispatch(setUserName(username));
 
-    //create and send new User to server
-
     let pfp_url = "";
     if (pfp !== null) {
       //Post pfp to minio endpoint
@@ -68,6 +67,7 @@ function Welcome() {
       msg_id: uuidv4(),
     };
     dispatch(send(message));
+
     router.push("/chat");
   }
 
@@ -84,11 +84,13 @@ function Welcome() {
         root: { borderRadius: "0.25em", marginTop: "2em", padding: "1em" },
       }}
     >
-      <h1>Welcome to my cool chat app!</h1>
+      <h1 className={classes.h1}>Welcome to my cool chat app!</h1>
       <Container>
-        <h2 style={{ marginBottom: "0.1em" }}>Please input your name</h2>
+        <h2 className={classes.h2} style={{ marginBottom: "0.1em" }}>
+          Please enter your name
+        </h2>
         <TextInput
-          label="Username"
+          label=""
           styles={{
             root: { padding: "0.25em" },
           }}
@@ -108,9 +110,10 @@ function Welcome() {
             marginBottom: "1em",
           }}
         >
-          <h3>And optionally add a profile picture</h3>
-          <Container style={{ border: theme.colors.gray[0] }}>
+          <h3 className={classes.h3}>And optionally add a profile picture</h3>
+          <Container style={{ border: theme.colors.greenish[2] }}>
             <FileInput
+              color="greenish.2"
               onChange={(picture) => setPfp(picture)}
               clearable
               accept="image/png,image/jpeg"
@@ -125,9 +128,10 @@ function Welcome() {
         onClick={() => {
           goToChat();
         }}
-        styles={{ root: { padding: "0.25em", margin: "0.5em" } }}
+        bg="greenish.2"
+        styles={{ root: { padding: "0.5em", margin: "0.5em" } }}
       >
-        Go to chat room
+        <Text c="black.9">Go to chat room</Text>
       </Button>
     </Container>
   );

@@ -1,5 +1,4 @@
 "use client";
-import { selectUserId, selectUserName } from "@/lib/features/userSlice";
 
 import mysteryman from "@/mysteryman.png";
 
@@ -33,21 +32,24 @@ import {
   useMantineTheme,
 } from "@mantine/core";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
-import { disconnect, send } from "@/lib/features/socketSlice";
+import { connect, disconnect, send } from "@/lib/features/socketSlice";
 import { useFormatter, useNow } from "next-intl";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { useLocalStorage } from "@mantine/hooks";
 
 type ChatRoomProps = {};
 
 function ChatRoom(props: ChatRoomProps) {
-  const currentUserId = useAppSelector(selectUserId);
   const messages = useAppSelector(selectMessages);
   const router = useRouter();
 
   const users = useAppSelector(selectUsers);
 
-  const currentUser = users.filter((user) => user.id === currentUserId)[0];
+  const [userId, setUserId] = useLocalStorage({
+    key: "user-id",
+    defaultValue: "",
+  });
 
   const [currentMessageContent, setCurrentMessageContent] =
     useState<string>("");
@@ -76,17 +78,15 @@ function ChatRoom(props: ChatRoomProps) {
     dispatch(setUsers(parsedUsers));
   }
   useEffect(() => {
-    if (currentUserId === "") {
-      router.push("/");
-      dispatch(disconnect());
-    }
+    dispatch(disconnect());
+    dispatch(connect());
     fetchData();
   }, [dispatch]); //dispatch will never actually change but useEffect doesn't know what
 
   async function sendMessage() {
     if (currentMessageContent !== "") {
       const payload: SendChatPayload = {
-        sender_id: currentUserId,
+        sender_id: userId,
         content: currentMessageContent,
       };
       const message: WSClientMessage = {
@@ -123,65 +123,71 @@ function ChatRoom(props: ChatRoomProps) {
         root: {
           margin: "2em",
           padding: "1em",
-          backgroundColor: theme.colors.gray[0],
+          backgroundColor: theme.colors.greenish[1],
         },
       }}
     >
-      <h1>Chat</h1>
+      <Group justify="space-between">
+        <h1>Chat</h1>
+        <Button
+          bg="red.4"
+          onClick={() => {
+            setUserId("");
+            router.push("/");
+          }}
+        >
+          <Text c="black.9">Logout</Text>
+        </Button>
+      </Group>
       <ScrollArea h={600}>
         <List
-          bg="gray.1"
           styles={{
             root: {
               margin: "0.5em",
               borderRadius: "0.25em",
+              borderColor: theme.colors.greenish[2],
               padding: "0.25em",
               height: "100%",
-              backgroundColor: theme.colors.greenish[0],
+              backgroundColor: theme.colors.greenish[1],
             },
           }}
         >
           {messages.map((message) => {
             return (
-              <List.Item style={{ listStyleType: "none" }} key={message.id}>
+              <List.Item
+                style={{
+                  listStyleType: "none",
+                  backgroundColor: "#FFFFFF",
+                  margin: "0.5em",
+                }}
+                key={message.id}
+              >
                 <Group style={{ height: "100%", padding: "1em" }}>
-                  <Container
-                    style={{
-                      backgroundColor:
-                        message.sender_id === currentUserId
-                          ? theme.colors.orange[1]
-                          : theme.colors.greenish[2],
-                    }}
-                  >
-                    <Text>
-                      {message.sender_id === currentUserId
-                        ? "You"
-                        : users.filter(
+                  <Image
+                    width={50}
+                    height={50}
+                    src={
+                      users.filter((user) => user.id === message.sender_id)[0]
+                        .pfp_url !== ""
+                        ? users.filter(
                             (user) => user.id === message.sender_id
-                          )[0].username}
-                      :
-                    </Text>
-                    <Image
-                      width={50}
-                      height={50}
-                      src={
-                        users.filter((user) => user.id === message.sender_id)[0]
-                          .pfp_url !== ""
-                          ? users.filter(
-                              (user) => user.id === message.sender_id
-                            )[0].pfp_url
-                          : mysteryman
-                      }
-                      alt={
-                        "Profile picture of " +
-                        users.filter((user) => user.id === message.sender_id)[0]
-                          .username
-                      }
-                    ></Image>
-                  </Container>
-                  <Container
-                    style={{ backgroundColor: theme.colors.greenish[1] }}
-                  >
+                          )[0].pfp_url
+                        : mysteryman
+                    }
+                    alt={
+                      "Profile picture of " +
+                      users.filter((user) => user.id === message.sender_id)[0]
+                        .username
+                    }
+                  ></Image>
+                  <Text>
+                    {message.sender_id === userId
+                      ? "You"
+                      : users.filter((user) => user.id === message.sender_id)[0]
+                          .username}
+                    :
+                  </Text>
+                  <Container style={{}}>
                     <Text>{message.content}</Text>
                   </Container>
                   <Container>
@@ -205,7 +211,9 @@ function ChatRoom(props: ChatRoomProps) {
           onKeyDown={(e) => handleKeyDown(e)}
           onChange={(e) => setMessageText(e)}
         />
-        <Button onClick={() => sendMessage()}>Send message</Button>
+        <Button bg="greenish.2" onClick={() => sendMessage()}>
+          <Text c="black.9">Send message</Text>
+        </Button>
       </Group>
     </Stack>
   );

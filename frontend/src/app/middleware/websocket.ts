@@ -3,7 +3,6 @@ import { setCurrentUser } from "@/lib/features/userSlice";
 import { RootState } from "@/lib/store";
 import {
   AcknowledgeKind,
-  AcknowledgePayload,
   ChatMessage,
   User,
   WSClientMessage,
@@ -90,7 +89,10 @@ const socketMiddleware = (store) => {
         console.log("WS_SEND with action:", action.payload);
         if (socket?.readyState === WebSocket.OPEN)
           socket.send(JSON.stringify(action.payload));
-        else console.log("socket is not open :(");
+        else {
+          console.log("socket is not open :(");
+        }
+
         const msg: WSClientMessage = action.payload;
 
         return new Promise((res, rej) => {
@@ -111,17 +113,17 @@ const socketMiddleware = (store) => {
 
                     break;
                   case AcknowledgeKind.JoinRoom:
-                    store.dispatch(
-                      setUsers([
-                        ...currentState.chat.users,
-                        wsResponse.payload.data as User,
-                      ])
-                    );
-                    store.dispatch(
-                      setCurrentUser(wsResponse.payload.data as User)
-                    );
+                    const user: User = wsResponse.payload.data;
 
-                    console.log("new user:", wsResponse.payload.data);
+                    store.dispatch(
+                      setUsers([...currentState.chat.users, user])
+                    );
+                    store.dispatch(setCurrentUser(user));
+
+                    localStorage.setItem("user-id", user.id);
+                    console.log("set user-id to", user.id);
+
+                    console.log("new user:", user);
 
                     break;
                   case AcknowledgeKind.SendChat:

@@ -20,6 +20,7 @@
     "react-dom": "^19.0.0",
     "react-redux": "^9.2.0",
     "react-tooltip": "^5.28.1",
+    "usehooks-ts": "^3.1.1",
     "uuid": "^11.1.0"
   },
   "devDependencies": {

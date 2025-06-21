@@ -11,19 +11,6 @@ import {
 import StoreProvider from "./StoreProvider";
 import { NextIntlClientProvider } from "next-intl";
 
-const orange: MantineColorsTuple = [
-  "#fff8e1",
-  "#ffefcb",
-  "#ffdd9a",
-  "#ffca64",
-  "#ffba38",
-  "#ffb01b",
-  "#ffa903",
-  "#e39500",
-  "#cb8400",
-  "#b07100",
-];
-
 const greenish: MantineColorsTuple = [
   "#e1ffec",
   "#cbffdd",
@@ -37,23 +24,49 @@ const greenish: MantineColorsTuple = [
   "#00af30",
 ];
 
-const gray: MantineColorsTuple = [
-  "#f1f4fe",
-  "#e3e5ed",
-  "#c7c9d4",
-  "#a8abbb",
-  "#8d92a5",
-  "#7d8299",
-  "#747a94",
-  "#696f8a",
-  "#565c75",
-  "#484f69",
+const beige: MantineColorsTuple = [
+  "#fef2f5",
+  "#eae6e7",
+  "#cdcdcd",
+  "#b2b2b2",
+  "#9a9a9a",
+  "#8b8b8b",
+  "#848484",
+  "#6e6e6e",
+  "#676465",
+  "#5e5457",
+];
+
+const black: MantineColorsTuple = [
+  "#f5f5f5",
+  "#e7e7e7",
+  "#cdcdcd",
+  "#b2b2b2",
+  "#9a9a9a",
+  "#8b8b8b",
+  "#848484",
+  "#717171",
+  "#656565",
+  "#000000",
+];
+const red: MantineColorsTuple = [
+  "#ffe8e8",
+  "#ffcfcf",
+  "#ff9c9c",
+  "#fe6565",
+  "#fd3937",
+  "#fe1e1a",
+  "#fe0e0b",
+  "#e80000",
+  "#cb0000",
+  "#b10000",
 ];
 const theme = createTheme({
   colors: {
-    orange,
     greenish,
-    gray,
+    beige,
+    black,
+    red,
   },
   radius: {
     xs: "1em",
